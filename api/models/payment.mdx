@@ -1,0 +1,408 @@
+---
+title: Payment Model
+description: Payment model for managing patient payments and billing in the Nguhöe EHR system
+---
+
+## Overview
+
+The `Payment` model tracks financial transactions for consultations and services. It records payment amounts, methods, status, and links payments to patients and consultations.
+
+**Model Location**: `app/Models/Payment.php`
+
+**Features**:
+- Soft deletes enabled
+- Decimal casting for monetary amounts
+- Relationships with patients and consultations
+- Support for multiple payment methods and statuses
+
+## Database Schema
+
+<ResponseField name="id" type="bigint" required>
+  Primary key, auto-incrementing
+</ResponseField>
+
+<ResponseField name="patient_id" type="bigint" required>
+  Foreign key to patients table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="consultation_id" type="bigint">
+  Foreign key to consultations table. Sets to null on delete.
+</ResponseField>
+
+<ResponseField name="amount" type="decimal(10,2)" required>
+  Payment amount with 2 decimal precision
+</ResponseField>
+
+<ResponseField name="payment_method" type="string" required>
+  Payment method used. Common values:
+  - `cash` - Cash payment
+  - `card` - Credit/debit card
+  - `transfer` - Bank transfer
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Payment status. Default: `paid`
+  
+  Possible values:
+  - `paid` - Payment completed
+  - `pending` - Payment pending
+  - `cancelled` - Payment cancelled
+</ResponseField>
+
+<ResponseField name="notes" type="text">
+  Additional payment notes or reference information
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+  Record creation timestamp
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+  Record last update timestamp
+</ResponseField>
+
+<ResponseField name="deleted_at" type="timestamp">
+  Soft delete timestamp (null if not deleted)
+</ResponseField>
+
+## Fillable Attributes
+
+The following attributes can be mass-assigned:
+
+<ParamField body="patient_id" type="integer" required>
+  ID of the patient making the payment
+</ParamField>
+
+<ParamField body="consultation_id" type="integer">
+  ID of the related consultation (optional)
+</ParamField>
+
+<ParamField body="amount" type="decimal" required>
+  Payment amount (e.g., 500.00)
+</ParamField>
+
+<ParamField body="payment_method" type="string" required>
+  Payment method: `cash`, `card`, or `transfer`
+</ParamField>
+
+<ParamField body="status" type="string">
+  Payment status: `paid`, `pending`, or `cancelled`
+</ParamField>
+
+<ParamField body="notes" type="text">
+  Additional notes or transaction reference
+</ParamField>
+
+## Relationships
+
+### Patient
+
+Get the patient who made this payment.
+
+```php
+$payment = Payment::find(1);
+$patient = $payment->patient;
+
+echo $patient->full_name;
+echo $patient->phone;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Patient`
+
+**Foreign Key**: `patient_id`
+
+### Consultation
+
+Get the consultation associated with this payment (if any).
+
+```php
+$payment = Payment::find(1);
+$consultation = $payment->consultation;
+
+if ($consultation) {
+    echo "Service: " . $consultation->diagnosis;
+    echo "Doctor: " . $consultation->doctor->name;
+}
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Consultation`
+
+**Foreign Key**: `consultation_id`
+
+## Type Casting
+
+The model automatically casts the following attributes:
+
+- `amount`: Cast to `decimal` with 2 decimal places
+
+## Soft Deletes
+
+The Payment model uses soft deletes. Deleted records are not permanently removed from the database but marked with a `deleted_at` timestamp.
+
+```php
+// Soft delete a payment
+$payment->delete();
+
+// Include soft deleted records
+$allPayments = Payment::withTrashed()->get();
+
+// Get only soft deleted records
+$deletedPayments = Payment::onlyTrashed()->get();
+
+// Restore a soft deleted payment
+$payment->restore();
+
+// Permanently delete
+$payment->forceDelete();
+```
+
+## Usage Examples
+
+### Creating a Payment
+
+```php
+use App\Models\Payment;
+
+$payment = Payment::create([
+    'patient_id' => 1,
+    'consultation_id' => 5,
+    'amount' => 500.00,
+    'payment_method' => 'cash',
+    'status' => 'paid',
+    'notes' => 'Consulta general - pago completo',
+]);
+```
+
+### Creating Payment for Consultation
+
+```php
+use App\Models\Consultation;
+
+$consultation = Consultation::find(1);
+
+// Create payment directly from consultation
+$payment = $consultation->payment()->create([
+    'patient_id' => $consultation->patient_id,
+    'amount' => 750.00,
+    'payment_method' => 'card',
+    'status' => 'paid',
+]);
+```
+
+### Updating Payment Status
+
+```php
+$payment = Payment::find(1);
+
+// Mark as paid
+$payment->update([
+    'status' => 'paid',
+    'notes' => 'Pagado vía transferencia - Ref: ABC123',
+]);
+
+// Cancel payment
+$payment->update([
+    'status' => 'cancelled',
+    'notes' => 'Cancelado por el paciente',
+]);
+```
+
+### Querying Payments
+
+```php
+// Get all payments for a patient
+$patientPayments = Payment::where('patient_id', 1)
+    ->with('consultation')
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+// Get today's payments
+$todayPayments = Payment::whereDate('created_at', today())
+    ->where('status', 'paid')
+    ->with(['patient', 'consultation'])
+    ->get();
+
+// Get pending payments
+$pendingPayments = Payment::where('status', 'pending')
+    ->with('patient')
+    ->get();
+```
+
+### Financial Calculations
+
+```php
+// Calculate total revenue for a period
+$totalRevenue = Payment::where('status', 'paid')
+    ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+    ->sum('amount');
+
+echo "Monthly Revenue: $" . number_format($totalRevenue, 2);
+
+// Calculate revenue by payment method
+$revenueByMethod = Payment::where('status', 'paid')
+    ->whereDate('created_at', today())
+    ->selectRaw('payment_method, SUM(amount) as total')
+    ->groupBy('payment_method')
+    ->get();
+
+foreach ($revenueByMethod as $method) {
+    echo "{$method->payment_method}: $" . number_format($method->total, 2) . "\n";
+}
+```
+
+### Working with Decimal Amounts
+
+```php
+$payment = Payment::find(1);
+
+// Amount is automatically cast to decimal
+echo "Amount: $" . number_format($payment->amount, 2);
+
+// Perform calculations
+$tax = $payment->amount * 0.16; // 16% tax
+$total = $payment->amount + $tax;
+
+echo "Subtotal: $" . number_format($payment->amount, 2);
+echo "Tax: $" . number_format($tax, 2);
+echo "Total: $" . number_format($total, 2);
+```
+
+### Filtering by Payment Method
+
+```php
+// Get cash payments
+$cashPayments = Payment::where('payment_method', 'cash')
+    ->where('status', 'paid')
+    ->get();
+
+// Get card payments
+$cardPayments = Payment::where('payment_method', 'card')
+    ->where('status', 'paid')
+    ->get();
+
+// Get transfer payments
+$transferPayments = Payment::where('payment_method', 'transfer')
+    ->where('status', 'paid')
+    ->get();
+```
+
+### Patient Payment History
+
+```php
+$patientId = 1;
+
+$paymentHistory = Payment::where('patient_id', $patientId)
+    ->with(['consultation.doctor'])
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+// Calculate total paid by patient
+$totalPaid = Payment::where('patient_id', $patientId)
+    ->where('status', 'paid')
+    ->sum('amount');
+
+// Calculate outstanding balance
+$pendingAmount = Payment::where('patient_id', $patientId)
+    ->where('status', 'pending')
+    ->sum('amount');
+
+echo "Total Paid: $" . number_format($totalPaid, 2);
+echo "Outstanding: $" . number_format($pendingAmount, 2);
+```
+
+### Daily Revenue Report
+
+```php
+$date = today();
+
+$dailyReport = [
+    'date' => $date->format('d/m/Y'),
+    'total_payments' => Payment::whereDate('created_at', $date)->count(),
+    'total_revenue' => Payment::whereDate('created_at', $date)
+        ->where('status', 'paid')
+        ->sum('amount'),
+    'pending_amount' => Payment::whereDate('created_at', $date)
+        ->where('status', 'pending')
+        ->sum('amount'),
+    'by_method' => Payment::whereDate('created_at', $date)
+        ->where('status', 'paid')
+        ->selectRaw('payment_method, COUNT(*) as count, SUM(amount) as total')
+        ->groupBy('payment_method')
+        ->get(),
+];
+```
+
+### Eager Loading Payment Details
+
+```php
+// Load payment with all related information
+$payment = Payment::with([
+    'patient' => function ($query) {
+        $query->select('id', 'full_name', 'phone', 'email');
+    },
+    'consultation' => function ($query) {
+        $query->select('id', 'diagnosis', 'doctor_id')
+              ->with('doctor:id,name');
+    }
+])->find(1);
+```
+
+### Outstanding Payments Report
+
+```php
+// Get all patients with pending payments
+$outstandingPayments = Payment::where('status', 'pending')
+    ->with(['patient', 'consultation'])
+    ->get()
+    ->groupBy('patient_id')
+    ->map(function ($payments, $patientId) {
+        return [
+            'patient' => $payments->first()->patient->full_name,
+            'total_pending' => $payments->sum('amount'),
+            'payment_count' => $payments->count(),
+            'oldest_pending' => $payments->min('created_at'),
+        ];
+    });
+```
+
+### Validation Example
+
+```php
+// Validate payment data
+$validated = $request->validate([
+    'patient_id' => 'required|exists:patients,id',
+    'consultation_id' => 'nullable|exists:consultations,id',
+    'amount' => 'required|numeric|min:0.01|max:999999.99',
+    'payment_method' => 'required|in:cash,card,transfer',
+    'status' => 'nullable|in:paid,pending,cancelled',
+    'notes' => 'nullable|string|max:1000',
+]);
+
+$payment = Payment::create($validated);
+```
+
+### Refund or Adjustment
+
+```php
+$originalPayment = Payment::find(1);
+
+// Create refund payment (negative amount)
+$refund = Payment::create([
+    'patient_id' => $originalPayment->patient_id,
+    'consultation_id' => $originalPayment->consultation_id,
+    'amount' => -$originalPayment->amount,
+    'payment_method' => $originalPayment->payment_method,
+    'status' => 'paid',
+    'notes' => "Reembolso de pago #{$originalPayment->id}",
+]);
+
+// Or mark original as cancelled
+$originalPayment->update([
+    'status' => 'cancelled',
+    'notes' => 'Cancelado - reembolso procesado',
+]);
+```

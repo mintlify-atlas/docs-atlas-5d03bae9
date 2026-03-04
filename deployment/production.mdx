@@ -1,0 +1,476 @@
+---
+title: 'Production Deployment'
+description: 'Step-by-step guide to deploying Nguhöe EHR to production'
+---
+
+## Pre-Deployment Checklist
+
+Before deploying to production, ensure you have:
+
+- [ ] Server meeting all [system requirements](/deployment/requirements)
+- [ ] Database server installed and accessible
+- [ ] SSL certificate for your domain
+- [ ] Backup strategy planned
+- [ ] Environment variables documented
+
+## Server Setup
+
+### 1. Update System Packages
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+### 2. Install Required Software
+
+```bash
+# Install PHP 8.2 and required extensions
+sudo apt install -y php8.2 php8.2-cli php8.2-fpm php8.2-mbstring \
+  php8.2-xml php8.2-bcmath php8.2-curl php8.2-zip php8.2-gd \
+  php8.2-mysql php8.2-pgsql php8.2-sqlite3
+
+# Install Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Install Node.js 20.x LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install Supervisor for queue workers
+sudo apt install -y supervisor
+
+# Install Nginx
+sudo apt install -y nginx
+```
+
+### 3. Create Application Directory
+
+```bash
+sudo mkdir -p /var/www/nguhoe
+sudo chown -R $USER:$USER /var/www/nguhoe
+cd /var/www/nguhoe
+```
+
+## Application Installation
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/your-org/nguhoe-ehr.git .
+```
+
+### 2. Install PHP Dependencies
+
+```bash
+composer install --optimize-autoloader --no-dev
+```
+
+The `--optimize-autoloader` flag generates optimized class maps for better performance, and `--no-dev` excludes development dependencies.
+
+### 3. Install Node.js Dependencies and Build Assets
+
+```bash
+npm ci
+npm run build
+```
+
+Use `npm ci` instead of `npm install` for faster, more reliable installs in production.
+
+### 4. Set Up Environment Configuration
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Edit `.env` with production settings:
+
+```bash
+APP_NAME="Nguhöe EHR"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=nguhoe
+DB_USERNAME=nguhoe_user
+DB_PASSWORD=your-secure-password
+
+SESSION_DRIVER=database
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+
+MAIL_MAILER=smtp
+MAIL_HOST=your-smtp-host
+MAIL_PORT=587
+MAIL_USERNAME=your-email@domain.com
+MAIL_PASSWORD=your-email-password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=noreply@your-domain.com
+MAIL_FROM_NAME="${APP_NAME}"
+
+BACKUP_ARCHIVE_PASSWORD=your-backup-encryption-password
+```
+
+### 5. Set Correct Permissions
+
+```bash
+sudo chown -R www-data:www-data /var/www/nguhoe/storage
+sudo chown -R www-data:www-data /var/www/nguhoe/bootstrap/cache
+sudo chmod -R 775 /var/www/nguhoe/storage
+sudo chmod -R 775 /var/www/nguhoe/bootstrap/cache
+```
+
+### 6. Run Database Migrations
+
+```bash
+php artisan migrate --force
+```
+
+The `--force` flag is required to run migrations in production.
+
+### 7. Optimize Application
+
+```bash
+# Cache configuration
+php artisan config:cache
+
+# Cache routes
+php artisan route:cache
+
+# Cache views
+php artisan view:cache
+
+# Cache events
+php artisan event:cache
+```
+
+## Web Server Configuration
+
+### Nginx Configuration
+
+Create `/etc/nginx/sites-available/nguhoe`:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com www.your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name your-domain.com www.your-domain.com;
+    root /var/www/nguhoe/public;
+
+    index index.php;
+
+    charset utf-8;
+
+    # SSL Configuration
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Logs
+    access_log /var/log/nginx/nguhoe-access.log;
+    error_log /var/log/nginx/nguhoe-error.log;
+
+    # Client upload size
+    client_max_body_size 64M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+Enable the site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/nguhoe /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Apache Configuration
+
+Create `/etc/apache2/sites-available/nguhoe.conf`:
+
+```apache
+<VirtualHost *:80>
+    ServerName your-domain.com
+    ServerAlias www.your-domain.com
+    Redirect permanent / https://your-domain.com/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName your-domain.com
+    ServerAlias www.your-domain.com
+    DocumentRoot /var/www/nguhoe/public
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/your-domain.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/your-domain.com/privkey.pem
+
+    <Directory /var/www/nguhoe/public>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/nguhoe-error.log
+    CustomLog ${APACHE_LOG_DIR}/nguhoe-access.log combined
+</VirtualHost>
+```
+
+Enable required modules and site:
+
+```bash
+sudo a2enmod rewrite ssl
+sudo a2ensite nguhoe
+sudo systemctl reload apache2
+```
+
+## SSL/TLS Setup with Let's Encrypt
+
+```bash
+# Install Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Obtain certificate (for Nginx)
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+
+# For Apache, use:
+# sudo certbot --apache -d your-domain.com -d www.your-domain.com
+
+# Test automatic renewal
+sudo certbot renew --dry-run
+```
+
+## Queue Worker Setup
+
+Create Supervisor configuration at `/etc/supervisor/conf.d/nguhoe-worker.conf`:
+
+```ini
+[program:nguhoe-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/nguhoe/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/www/nguhoe/storage/logs/worker.log
+stopwaitsecs=3600
+```
+
+Start the queue workers:
+
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start nguhoe-worker:*
+```
+
+## Performance Optimization
+
+### 1. Enable OPcache
+
+Edit `/etc/php/8.2/fpm/php.ini`:
+
+```ini
+[opcache]
+opcache.enable=1
+opcache.memory_consumption=128
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=10000
+opcache.revalidate_freq=60
+opcache.fast_shutdown=1
+```
+
+Restart PHP-FPM:
+
+```bash
+sudo systemctl restart php8.2-fpm
+```
+
+### 2. Configure Session and Cache
+
+For better performance with multiple servers, consider using Redis:
+
+```bash
+# Install Redis
+sudo apt install -y redis-server php8.2-redis
+
+# Update .env
+SESSION_DRIVER=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+### 3. Enable HTTP/2
+
+HTTP/2 is enabled by default in the Nginx configuration above. Ensure your SSL configuration includes:
+
+```nginx
+listen 443 ssl http2;
+```
+
+## Scheduled Tasks (Cron)
+
+Add to crontab for the web user:
+
+```bash
+sudo crontab -e -u www-data
+```
+
+Add this line:
+
+```cron
+* * * * * cd /var/www/nguhoe && php artisan schedule:run >> /dev/null 2>&1
+```
+
+This runs Laravel's task scheduler every minute, which handles:
+- Automated backups (configured via spatie/laravel-backup)
+- Database cleanup tasks
+- Any custom scheduled commands
+
+## Post-Deployment Verification
+
+### 1. Check Application Status
+
+```bash
+php artisan about
+```
+
+### 2. Verify Queue Workers
+
+```bash
+sudo supervisorctl status
+```
+
+### 3. Test Application
+
+- Visit https://your-domain.com
+- Verify SSL certificate is valid
+- Test login functionality
+- Check error logs: `tail -f storage/logs/laravel.log`
+
+### 4. Run Health Checks
+
+```bash
+# Test database connection
+php artisan tinker
+>>> DB::connection()->getPdo();
+
+# Test queue
+php artisan queue:work --once
+```
+
+## Deployment Script
+
+Create a deployment script at `/var/www/nguhoe/deploy.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+echo "Starting deployment..."
+
+# Enter maintenance mode
+php artisan down --render="errors::503"
+
+# Pull latest changes
+git pull origin main
+
+# Install/update dependencies
+composer install --optimize-autoloader --no-dev
+npm ci
+npm run build
+
+# Run migrations
+php artisan migrate --force
+
+# Clear and rebuild cache
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan event:cache
+
+# Restart queue workers
+sudo supervisorctl restart nguhoe-worker:*
+
+# Exit maintenance mode
+php artisan up
+
+echo "Deployment complete!"
+```
+
+Make it executable:
+
+```bash
+chmod +x deploy.sh
+```
+
+## Rollback Procedure
+
+If deployment fails:
+
+```bash
+# Revert to previous Git commit
+git reset --hard HEAD~1
+
+# Rollback database migrations
+php artisan migrate:rollback
+
+# Rebuild caches
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Restart workers
+sudo supervisorctl restart nguhoe-worker:*
+
+# Exit maintenance mode
+php artisan up
+```
+
+## Next Steps
+
+- Set up [automated backups](/deployment/maintenance#backup-procedures)
+- Configure [security settings](/deployment/security)
+- Implement [monitoring and logging](/deployment/maintenance#monitoring)
+- Review [maintenance procedures](/deployment/maintenance)

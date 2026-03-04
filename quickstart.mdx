@@ -1,80 +1,328 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get Nguhöe EHR running on your machine in minutes
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, ensure you have the following installed:
 
-### Step 1: Set up your local environment
+- **PHP 8.2 or higher** with extensions: `sqlite3`, `pdo`, `mbstring`, `xml`, `curl`, `zip`, `gd`
+- **Composer** (PHP package manager)
+- **Node.js 18+** and npm
+- **Git**
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Warning>
+Make sure PHP 8.2+ is installed. Nguhöe EHR uses modern PHP features that require this version.
+</Warning>
 
-### Step 2: Deploy your changes
+## Installation steps
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Nguhöe EHR repository to your local machine:
+
+    ```bash
+    git clone https://github.com/your-org/nguho-ehr.git
+    cd nguho-ehr
+    ```
+  </Step>
+
+  <Step title="Run the setup script">
+    Nguhöe EHR includes a convenient setup script that handles everything:
+
+    ```bash
+    composer setup
+    ```
+
+    This command will:
+    - Install PHP dependencies via `composer install`
+    - Copy `.env.example` to `.env`
+    - Generate application encryption key
+    - Run database migrations
+    - Install JavaScript dependencies via `npm install`
+    - Build frontend assets
+
+    <Accordion title="What's happening behind the scenes?">
+      The `composer setup` script runs these commands in sequence:
+
+      ```json
+      "setup": [
+          "composer install",
+          "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+          "@php artisan key:generate",
+          "@php artisan migrate --force",
+          "npm install",
+          "npm run build"
+      ]
+      ```
+
+      From `composer.json:50-57`
+    </Accordion>
+  </Step>
+
+  <Step title="Start the development server">
+    Launch all development services with one command:
+
+    ```bash
+    composer dev
+    ```
+
+    This starts four concurrent processes:
+    - **Laravel server** on `http://localhost:8000`
+    - **Queue worker** for background jobs
+    - **Log viewer** (Laravel Pail)
+    - **Vite dev server** for hot module replacement
+
+    <Info>
+    The dev server uses `concurrently` to run multiple processes. You'll see color-coded output from each service.
+    </Info>
+
+    You should see output like:
+
+    ```bash
+    [server] Laravel development server started: http://127.0.0.1:8000
+    [vite]   VITE v7.0.4  ready in 824 ms
+    [queue] Processing jobs from queue
+    [logs]  Listening for logs...
+    ```
+  </Step>
+
+  <Step title="Create your first user">
+    Open your browser to `http://localhost:8000` and click "Register" to create your first account.
+
+    The first registered user will need to be manually assigned the admin role. In a new terminal:
+
+    ```bash
+    php artisan tinker
+    ```
+
+    Then run:
+
+    ```php
+    $user = App\Models\User::first();
+    $user->assignRole('admin');
+    exit
+    ```
+
+    <Note>
+    For development, you can also use database seeders to create test data. See the Installation guide for production user setup.
+    </Note>
+  </Step>
+
+  <Step title="Access the application">
+    Navigate to `http://localhost:8000` and log in with your credentials.
+
+    You'll see the dashboard with access to:
+    - Patient management
+    - Appointment scheduling
+    - Consultation records
+    - Prescription management
+    - Payment tracking
+    - Staff management (admin only)
+    - Reports (admin only)
+  </Step>
+</Steps>
+
+## Default configuration
+
+The quick start uses these default settings:
+
+| Setting | Value | Location |
+|---------|-------|----------|
+| Database | SQLite (`database/database.sqlite`) | `.env:23` |
+| Queue | Database driver | `.env:38` |
+| Cache | Database | `.env:40` |
+| Session | Database | `.env:30` |
+| Mail | Log driver (development) | `.env:50` |
+| App URL | `http://localhost` | `.env:5` |
+
+<Info>
+SQLite is perfect for development and small deployments. For production, see the [Installation guide](/installation) for MySQL or PostgreSQL setup.
+</Info>
+
+## Exploring the features
+
+### Patient management
+
+Create your first patient record:
+
+1. Navigate to **Patients** in the sidebar
+2. Click **Add New Patient**
+3. Fill in the patient information
+4. Save the record
+
+Patient records include:
+- Personal information (name, ID, birth date, gender)
+- Contact details (phone, email, address)
+- Medical history (antecedents, allergies, chronic diseases)
+- Current medications
+- File attachments
+
+### Scheduling appointments
+
+Book an appointment:
+
+1. Go to **Appointments**
+2. Click **Schedule Appointment**
+3. Select patient and doctor
+4. Choose date and time
+5. Add reason for visit
+6. Confirm booking
+
+### Creating consultations
+
+<Note>
+Consultations can only be created by users with the **doctor** or **admin** role.
+</Note>
+
+Document a patient visit:
+
+1. Navigate to **Consultations**
+2. Click **New Consultation**
+3. Select patient (optionally link to appointment)
+4. Record vital signs
+5. Document reason for visit and clinical findings
+6. Add diagnosis and treatment plan
+7. Save consultation
+
+### Generating prescriptions
+
+Create a prescription from a consultation:
+
+1. Open a consultation record
+2. Click **Create Prescription**
+3. Add medications with:
+   - Medication name
+   - Dosage
+   - Frequency
+   - Duration
+4. Add general instructions
+5. Save and generate PDF
+
+## Development workflow
+
+### Running tests
+
+Nguhöe EHR uses Pest for testing:
+
+```bash
+# Run all tests
+php artisan test
+
+# Run specific test file
+php artisan test --filter=PatientTest
+
+# Run with coverage
+php artisan test --coverage
+```
+
+### Code formatting
+
+Format PHP code with Laravel Pint:
+
+```bash
+# Fix code style
+composer lint
+
+# Check without fixing
+composer test:lint
+```
+
+Format JavaScript/TypeScript code:
+
+```bash
+# Fix formatting
+npm run format
+
+# Check formatting
+npm run format:check
+```
+
+### Type checking
+
+Check TypeScript types:
+
+```bash
+npm run types
+```
+
+### Linting
+
+Lint JavaScript/TypeScript:
+
+```bash
+npm run lint
+```
+
+## Troubleshooting
+
+<Accordion title="Port 8000 already in use">
+  If port 8000 is already in use, you can specify a different port:
+
+  ```bash
+  php artisan serve --port=8080
+  ```
+
+  Don't forget to update `APP_URL` in `.env` to match.
 </Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Accordion title="Database file not found">
+  If you see a database error, create the SQLite file manually:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  ```bash
+  touch database/database.sqlite
+  php artisan migrate
+  ```
+</Accordion>
 
-### Step 3: Go live
+<Accordion title="Vite manifest error">
+  If you see "Unable to locate file in Vite manifest", rebuild assets:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
+  ```bash
+  npm run build
+  ```
+
+  Or ensure `npm run dev` is running in a separate terminal.
+</Accordion>
+
+<Accordion title="Permission denied errors">
+  Ensure proper permissions on storage and cache directories:
+
+  ```bash
+  chmod -R 775 storage bootstrap/cache
+  ```
+</Accordion>
+
+<Accordion title="Composer dependencies fail">
+  If Composer install fails, try:
+
+  ```bash
+  composer install --ignore-platform-reqs
+  ```
+
+  Note: Only use this for development if you can't upgrade PHP immediately.
 </Accordion>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you have Nguhöe EHR running:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Production installation" icon="server" href="/installation">
+    Deploy Nguhöe EHR to production with proper security and optimization
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/environment">
+    Customize the system for your clinic's needs
+  </Card>
+  <Card title="User management" icon="users" href="/guides/admin-guide">
+    Set up staff accounts and configure roles
+  </Card>
+  <Card title="Backup configuration" icon="database" href="/configuration/backup">
+    Configure automated backups for data protection
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+<Warning>
+The quick start setup is for **development only**. For production deployments, follow the [Installation guide](/installation) for proper security configuration.
+</Warning>

@@ -1,0 +1,776 @@
+---
+title: 'Maintenance & Operations'
+description: 'Ongoing maintenance, monitoring, and troubleshooting for Nguhöe EHR'
+---
+
+## Backup Procedures
+
+Nguhöe EHR uses **Spatie Laravel Backup** for automated backup management.
+
+### Backup Configuration
+
+The backup system is configured in `config/backup.php`. Key settings:
+
+- **Backup includes**: Application files (excluding vendor, node_modules) and database
+- **Backup destination**: Local disk by default (configurable for S3, FTP, etc.)
+- **Database**: Configured connection (MySQL, PostgreSQL, or SQLite)
+- **Encryption**: Optional password protection for backup archives
+
+### Manual Backup
+
+Create a backup manually:
+
+```bash
+php artisan backup:run
+```
+
+Backup only the database:
+
+```bash
+php artisan backup:run --only-db
+```
+
+### Automated Backup Schedule
+
+Backups are automatically scheduled. Verify in `app/Console/Kernel.php` or `routes/console.php`:
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('backup:clean')->daily()->at('01:00');
+Schedule::command('backup:run')->daily()->at('02:00');
+```
+
+This creates daily backups at 2:00 AM and cleans old backups at 1:00 AM.
+
+### Backup Retention Policy
+
+Default retention (configured in `config/backup.php`):
+
+- **All backups**: Keep for 7 days
+- **Daily backups**: Keep for 16 days
+- **Weekly backups**: Keep for 8 weeks
+- **Monthly backups**: Keep for 4 months
+- **Yearly backups**: Keep for 2 years
+
+### Backup to Cloud Storage
+
+Configure S3 or other cloud storage in `config/filesystems.php`, then update `config/backup.php`:
+
+```php
+'destination' => [
+    'disks' => [
+        'local',
+        's3',  // Add cloud storage
+    ],
+],
+```
+
+Configure S3 credentials in `.env`:
+
+```bash
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=nguhoe-backups
+```
+
+### Backup Encryption
+
+Enable password protection in `.env`:
+
+```bash
+BACKUP_ARCHIVE_PASSWORD=your-secure-password
+```
+
+### Monitoring Backup Health
+
+Check backup status:
+
+```bash
+php artisan backup:list
+```
+
+Monitor backup health:
+
+```bash
+php artisan backup:monitor
+```
+
+### Restore from Backup
+
+```bash
+# List available backups
+ls -lh storage/app/backups/
+
+# Extract backup archive
+unzip storage/app/backups/your-site-name/2026-03-04-02-00-00.zip -d /tmp/restore
+
+# Restore database
+php artisan db:wipe
+mysql -u nguhoe_user -p nguhoe < /tmp/restore/db-dumps/mysql-nguhoe.sql
+
+# Or for PostgreSQL
+psql -U nguhoe_user -d nguhoe -f /tmp/restore/db-dumps/pgsql-nguhoe.sql
+
+# Restore application files if needed
+rsync -av /tmp/restore/ /var/www/nguhoe/
+
+# Clear caches
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+```
+
+### Backup Notifications
+
+Configure email notifications for backup events in `config/backup.php`:
+
+```php
+'notifications' => [
+    'mail' => [
+        'to' => 'admin@your-domain.com',
+    ],
+],
+```
+
+## Update Procedures
+
+### Before Updating
+
+1. **Create a full backup**
+2. **Review changelog** for breaking changes
+3. **Test in staging environment** if available
+4. **Schedule maintenance window** for production
+
+### Update Process
+
+```bash
+# Enter maintenance mode
+php artisan down --render="errors::503"
+
+# Create backup
+php artisan backup:run
+
+# Pull latest code
+git fetch origin
+git checkout v1.2.3  # or specific tag/branch
+
+# Update PHP dependencies
+composer install --optimize-autoloader --no-dev
+
+# Update Node.js dependencies and rebuild assets
+npm ci
+npm run build
+
+# Run database migrations
+php artisan migrate --force
+
+# Clear and rebuild all caches
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan event:cache
+
+# Restart queue workers
+sudo supervisorctl restart nguhoe-worker:*
+
+# Exit maintenance mode
+php artisan up
+```
+
+### Security Updates
+
+For critical security updates:
+
+```bash
+# Check for security vulnerabilities
+composer audit
+npm audit
+
+# Update specific package
+composer update vendor/package-name
+npm update package-name
+
+# Apply updates immediately
+composer update --with-all-dependencies
+npm audit fix
+```
+
+### Rolling Back Updates
+
+If an update fails:
+
+```bash
+# Revert code
+git checkout previous-version
+
+# Rollback last migration batch
+php artisan migrate:rollback
+
+# Reinstall previous dependencies
+composer install --optimize-autoloader --no-dev
+npm ci && npm run build
+
+# Clear caches
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+
+# Restart workers
+sudo supervisorctl restart nguhoe-worker:*
+
+# Exit maintenance mode
+php artisan up
+```
+
+## Database Maintenance
+
+### Database Optimization
+
+```sql
+-- For MySQL/MariaDB
+OPTIMIZE TABLE users, patients, appointments;
+
+-- Analyze tables for query optimization
+ANALYZE TABLE users, patients, appointments;
+```
+
+```sql
+-- For PostgreSQL
+VACUUM ANALYZE;
+```
+
+### Database Size Monitoring
+
+```bash
+# For MySQL
+mysql -u nguhoe_user -p -e "SELECT 
+    table_schema AS 'Database', 
+    ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)' 
+  FROM information_schema.tables 
+  WHERE table_schema = 'nguhoe' 
+  GROUP BY table_schema;"
+
+# For PostgreSQL
+psql -U nguhoe_user -d nguhoe -c "SELECT 
+    pg_size_pretty(pg_database_size('nguhoe')) AS size;"
+```
+
+### Clean Old Sessions
+
+If using database sessions, clean expired sessions periodically:
+
+```bash
+php artisan session:gc
+```
+
+This is automatically handled by Laravel's session cleanup, but can be run manually.
+
+### Prune Old Records
+
+Laravel 12 includes model pruning for cleaning old data:
+
+```bash
+# Prune models that use the Prunable trait
+php artisan model:prune
+```
+
+Schedule this in your console routes:
+
+```php
+Schedule::command('model:prune')->daily();
+```
+
+## Log Management
+
+Nguhöe EHR uses Laravel 12's logging system with optional **Laravel Pail** for development.
+
+### Log Location
+
+```bash
+# Application logs
+tail -f storage/logs/laravel.log
+
+# Web server logs
+tail -f /var/log/nginx/nguhoe-access.log
+tail -f /var/log/nginx/nguhoe-error.log
+
+# Queue worker logs
+tail -f storage/logs/worker.log
+
+# PHP-FPM logs
+tail -f /var/log/php8.2-fpm.log
+```
+
+### Log Rotation
+
+Configure logrotate to prevent logs from filling disk space.
+
+Create `/etc/logrotate.d/nguhoe`:
+
+```
+/var/www/nguhoe/storage/logs/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    sharedscripts
+}
+```
+
+### Monitoring Logs for Errors
+
+```bash
+# Show recent errors
+grep -i "error" storage/logs/laravel.log | tail -n 50
+
+# Count errors by type
+grep -i "exception" storage/logs/laravel.log | awk '{print $NF}' | sort | uniq -c | sort -rn
+
+# Monitor critical errors in real-time
+tail -f storage/logs/laravel.log | grep -i "critical\|emergency"
+```
+
+### Laravel Pail (Development)
+
+In development, use Laravel Pail for real-time log viewing:
+
+```bash
+php artisan pail
+```
+
+This is included in `composer run dev` but should **not** be used in production.
+
+### Centralized Logging
+
+For production, consider centralized logging:
+
+- **Sentry**: Error tracking and monitoring
+- **Papertrail**: Cloud-hosted log management
+- **ELK Stack**: Elasticsearch, Logstash, Kibana
+- **Graylog**: Open-source log management
+
+## Queue Monitoring
+
+### Check Queue Status
+
+```bash
+# View queue workers
+sudo supervisorctl status nguhoe-worker:*
+
+# Check queue size
+php artisan queue:monitor database
+```
+
+### Failed Jobs
+
+```bash
+# List failed jobs
+php artisan queue:failed
+
+# Retry a specific failed job
+php artisan queue:retry <job-id>
+
+# Retry all failed jobs
+php artisan queue:retry all
+
+# Clear all failed jobs
+php artisan queue:flush
+```
+
+### Queue Worker Management
+
+```bash
+# Restart all workers
+sudo supervisorctl restart nguhoe-worker:*
+
+# Stop workers
+sudo supervisorctl stop nguhoe-worker:*
+
+# Start workers
+sudo supervisorctl start nguhoe-worker:*
+
+# View worker logs
+tail -f storage/logs/worker.log
+```
+
+### Queue Performance
+
+Monitor queue processing times:
+
+```bash
+# Enable query log temporarily
+php artisan tinker
+>>> DB::enableQueryLog();
+>>> DB::getQueryLog();
+```
+
+Consider using Laravel Horizon for advanced queue monitoring (requires Redis):
+
+```bash
+composer require laravel/horizon
+php artisan horizon:install
+```
+
+## Health Checks
+
+### Application Health
+
+```bash
+# Check application configuration
+php artisan about
+
+# Test database connection
+php artisan tinker
+>>> DB::connection()->getPdo();
+>>> exit
+
+# Verify environment
+php artisan env
+```
+
+### System Health
+
+```bash
+# Disk space
+df -h
+
+# Memory usage
+free -h
+
+# CPU load
+uptime
+
+# Active processes
+ps aux | grep -E 'php|nginx|mysql'
+```
+
+### Automated Health Monitoring
+
+Create a health check endpoint in `routes/web.php`:
+
+```php
+Route::get('/health', function () {
+    try {
+        DB::connection()->getPdo();
+        $dbStatus = 'ok';
+    } catch (\Exception $e) {
+        $dbStatus = 'failed';
+    }
+    
+    return response()->json([
+        'status' => 'ok',
+        'database' => $dbStatus,
+        'timestamp' => now(),
+    ]);
+});
+```
+
+Monitor this endpoint with tools like:
+
+- **UptimeRobot**
+- **Pingdom**
+- **StatusCake**
+- **Nagios**
+
+## Performance Monitoring
+
+### Enable Query Logging (Development Only)
+
+```php
+// In a service provider or tinker
+DB::enableQueryLog();
+
+// After operations
+$queries = DB::getQueryLog();
+dd($queries);
+```
+
+### Identify Slow Queries
+
+```sql
+-- For MySQL, enable slow query log
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 2;  -- Log queries taking > 2 seconds
+```
+
+### Cache Monitoring
+
+```bash
+# Clear all caches
+php artisan optimize:clear
+
+# Rebuild caches
+php artisan optimize
+```
+
+### Application Performance Monitoring (APM)
+
+Consider using:
+
+- **Laravel Telescope**: Development debugging
+- **New Relic**: Full-stack monitoring
+- **Datadog**: Infrastructure and APM
+- **Blackfire.io**: PHP profiling
+
+## Troubleshooting Common Issues
+
+### Issue: 500 Internal Server Error
+
+**Diagnosis:**
+
+```bash
+# Check Laravel logs
+tail -n 100 storage/logs/laravel.log
+
+# Check web server logs
+tail -n 100 /var/log/nginx/nguhoe-error.log
+
+# Check PHP-FPM logs
+tail -n 100 /var/log/php8.2-fpm.log
+```
+
+**Common causes:**
+
+- `.env` file missing or misconfigured
+- File permission issues
+- Missing APP_KEY
+- Database connection failure
+
+**Solutions:**
+
+```bash
+# Regenerate app key
+php artisan key:generate
+
+# Fix permissions
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+
+# Clear and rebuild caches
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+```
+
+### Issue: Queue Jobs Not Processing
+
+**Diagnosis:**
+
+```bash
+# Check worker status
+sudo supervisorctl status nguhoe-worker:*
+
+# Check worker logs
+tail -f storage/logs/worker.log
+
+# List failed jobs
+php artisan queue:failed
+```
+
+**Solutions:**
+
+```bash
+# Restart workers
+sudo supervisorctl restart nguhoe-worker:*
+
+# If workers aren't running
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start nguhoe-worker:*
+
+# Retry failed jobs
+php artisan queue:retry all
+```
+
+### Issue: High Memory Usage
+
+**Diagnosis:**
+
+```bash
+# Check memory usage
+free -h
+ps aux --sort=-%mem | head -n 10
+```
+
+**Solutions:**
+
+- Reduce number of queue workers
+- Optimize database queries (use eager loading)
+- Increase server RAM
+- Enable OPcache
+- Clear unused caches
+
+```bash
+# Restart PHP-FPM to clear memory
+sudo systemctl restart php8.2-fpm
+```
+
+### Issue: Slow Page Loads
+
+**Diagnosis:**
+
+```bash
+# Enable query log
+php artisan tinker
+>>> DB::enableQueryLog();
+
+# Check for N+1 queries
+```
+
+**Solutions:**
+
+- Use eager loading: `User::with('roles')->get()`
+- Implement caching for expensive queries
+- Optimize images and assets
+- Enable OPcache and browser caching
+- Use CDN for static assets
+
+### Issue: Database Connection Failed
+
+**Diagnosis:**
+
+```bash
+# Test database connection
+mysql -u nguhoe_user -p -h 127.0.0.1 nguhoe
+
+# Check database service
+sudo systemctl status mysql
+# or
+sudo systemctl status postgresql
+```
+
+**Solutions:**
+
+```bash
+# Restart database service
+sudo systemctl restart mysql
+
+# Verify .env credentials
+cat .env | grep DB_
+
+# Clear config cache
+php artisan config:clear
+```
+
+### Issue: Assets Not Loading (404)
+
+**Diagnosis:**
+
+```bash
+# Check if assets exist
+ls -la public/build/
+```
+
+**Solutions:**
+
+```bash
+# Rebuild assets
+npm run build
+
+# Clear view cache
+php artisan view:clear
+
+# Check Nginx/Apache configuration for public directory
+```
+
+### Issue: Session Lost/Users Logged Out
+
+**Diagnosis:**
+
+- Check session driver configuration
+- Verify session table exists (if using database sessions)
+
+**Solutions:**
+
+```bash
+# Recreate sessions table
+php artisan session:table
+php artisan migrate
+
+# Verify session configuration
+php artisan config:cache
+
+# Check SESSION_DOMAIN in .env
+# Should be null or match your domain
+SESSION_DOMAIN=null
+```
+
+## Maintenance Mode
+
+### Enable Maintenance Mode
+
+```bash
+# With custom message
+php artisan down --message="Scheduled maintenance in progress"
+
+# Allow specific IPs to access
+php artisan down --allow=192.168.1.100 --allow=192.168.1.101
+
+# With custom retry time (in seconds)
+php artisan down --retry=60
+
+# Render a specific view
+php artisan down --render="errors::503"
+```
+
+### Disable Maintenance Mode
+
+```bash
+php artisan up
+```
+
+### Custom Maintenance Page
+
+Create `resources/views/errors/503.blade.php` for a custom maintenance page.
+
+## Monitoring Checklist
+
+Regular monitoring tasks:
+
+**Daily:**
+- [ ] Check error logs for critical issues
+- [ ] Verify backup completion
+- [ ] Monitor disk space usage
+- [ ] Check queue workers are running
+
+**Weekly:**
+- [ ] Review failed jobs
+- [ ] Check database size and performance
+- [ ] Audit security logs
+- [ ] Test backup restoration (sample)
+
+**Monthly:**
+- [ ] Update dependencies (security patches)
+- [ ] Review user access and permissions
+- [ ] Optimize database tables
+- [ ] Review and clean old logs
+- [ ] Check SSL certificate expiration
+
+**Quarterly:**
+- [ ] Full backup restoration test
+- [ ] Security audit
+- [ ] Performance review and optimization
+- [ ] Update documentation
+
+## Emergency Contacts
+
+Maintain a contact list for emergencies:
+
+- **System Administrator**: [contact info]
+- **Database Administrator**: [contact info]
+- **Application Developer**: [contact info]
+- **Hosting Provider Support**: [contact info]
+- **Security Team**: [contact info]
+
+## Additional Resources
+
+- [Laravel Documentation](https://laravel.com/docs)
+- [Spatie Laravel Backup](https://spatie.be/docs/laravel-backup)
+- [Laravel Fortify](https://laravel.com/docs/fortify)
+- [Server Monitoring Best Practices](https://www.digitalocean.com/community/tutorials)

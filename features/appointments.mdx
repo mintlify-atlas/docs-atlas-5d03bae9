@@ -1,0 +1,339 @@
+---
+title: Appointments
+description: Schedule and manage patient appointments with doctor availability checking and patient self-booking
+icon: calendar
+---
+
+## Overview
+
+The Appointments module manages the scheduling system for Nguhöe EHR. It includes doctor availability checking, conflict prevention, status management, and patient self-booking through the patient portal.
+
+<Note>
+Appointments are accessible to Admin, Doctor, and Receptionist roles. Patients can book their own appointments through a dedicated portal.
+</Note>
+
+## Appointment Data Model
+
+### Core Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `patient_id` | foreign key | Reference to patient |
+| `doctor_id` | foreign key | Reference to doctor (users table) |
+| `start_time` | datetime | Appointment start time |
+| `end_time` | datetime | Appointment end time |
+| `status` | string | Current appointment status |
+| `reason` | string | Reason for visit |
+| `notes` | text | Additional notes |
+
+### Appointment Statuses
+
+<Tabs>
+  <Tab title="scheduled">
+    Initial state when appointment is created
+  </Tab>
+  <Tab title="confirmed">
+    Patient has confirmed the appointment
+  </Tab>
+  <Tab title="completed">
+    Appointment has been attended
+  </Tab>
+  <Tab title="cancelled">
+    Appointment was cancelled
+  </Tab>
+  <Tab title="no_show">
+    Patient did not attend
+  </Tab>
+</Tabs>
+
+## Scheduling Workflow
+
+### Staff Booking (Admin/Receptionist/Doctor)
+
+<Steps>
+  <Step title="Navigate to Appointments">
+    Access the appointments module from the main menu
+  </Step>
+  <Step title="Click Create Appointment">
+    Open the appointment creation form
+  </Step>
+  <Step title="Select Patient">
+    Choose from existing patients or create a new patient first
+  </Step>
+  <Step title="Select Doctor">
+    Choose the doctor for the appointment
+  </Step>
+  <Step title="Choose Date and Time">
+    Pick available date/time slot
+  </Step>
+  <Step title="Add Details">
+    Include reason for visit and any notes
+  </Step>
+  <Step title="Submit">
+    Create the appointment
+  </Step>
+</Steps>
+
+**Route:** `appointments.store` → `AppointmentController@store`  
+**Action:** `CreateAppointmentAction`
+
+```php
+// Creating an appointment (AppointmentController.php:59-73)
+$validated = $request->validate([
+    'patient_id' => 'required|exists:patients,id',
+    'doctor_id' => 'required|exists:users,id',
+    'start_time' => 'required|date',
+    'end_time' => 'required|date|after:start_time',
+    'reason' => 'nullable|string|max:255',
+    'notes' => 'nullable|string',
+]);
+
+$action->execute($validated);
+```
+
+### Patient Self-Booking
+
+Patients can book their own appointments through the patient portal (routes/web.php:64-72):
+
+<Steps>
+  <Step title="Access Portal">
+    Navigate to "My Appointments" in patient portal
+  </Step>
+  <Step title="Click Book Appointment">
+    Access the booking interface
+  </Step>
+  <Step title="Select Doctor">
+    Choose preferred doctor
+  </Step>
+  <Step title="Pick Date">
+    Select appointment date
+  </Step>
+  <Step title="View Available Slots">
+    System displays available 30-minute time slots
+  </Step>
+  <Step title="Select Time and Confirm">
+    Choose a slot and submit booking
+  </Step>
+</Steps>
+
+**Route:** `patient.appointments.store` → `PatientPortalController@storeAppointment`  
+**Endpoint:** `POST /book-appointment`
+
+```php
+// Patient booking with automatic slot calculation
+$start_time = Carbon::createFromFormat('Y-m-d H:i', $request->date . ' ' . $request->time);
+$end_time = $start_time->copy()->addMinutes(30);
+
+$action->execute([
+    'patient_id' => $patient->id,
+    'doctor_id' => $request->doctor_id,
+    'start_time' => $start_time,
+    'end_time' => $end_time,
+    'status' => 'scheduled',
+    'reason' => $request->reason,
+]);
+```
+
+## Doctor Availability System
+
+### How Availability Works
+
+The system checks doctor schedules and existing appointments to determine available slots:
+
+**API Endpoint:** `GET /api/availability`  
+**Controller:** `PatientPortalController@getAvailability`
+
+```php
+// Get availability for a specific doctor and date (PatientPortalController.php:39-95)
+$request->validate([
+    'doctor_id' => 'required|exists:users,id',
+    'date' => 'required|date_format:Y-m-d',
+]);
+
+// 1. Get doctor's schedule for the day of week
+$schedule = DoctorSchedule::where('user_id', $doctor_id)
+    ->where('day_of_week', $dayOfWeek)
+    ->first();
+
+// 2. If doctor doesn't work that day, return empty
+if (!$schedule || !$schedule->is_working) {
+    return response()->json(['slots' => []]);
+}
+
+// 3. Generate 30-minute slots between start and end time
+// 4. Check each slot against existing appointments
+// 5. Mark slots as available or occupied
+```
+
+### Conflict Prevention
+
+The system prevents double-booking through overlap detection:
+
+```php
+// Check for scheduling conflicts (PatientPortalController.php:118-124)
+$conflict = Appointment::where('doctor_id', $request->doctor_id)
+    ->where(function($query) use ($start_time, $end_time) {
+        $query->where('start_time', '<', $end_time)
+              ->where('end_time', '>', $start_time);
+    })
+    ->whereIn('status', ['scheduled', 'confirmed', 'completed'])
+    ->exists();
+
+if ($conflict) {
+    return redirect()->back()->withErrors(['time' => 'Este horario ya no está disponible.']);
+}
+```
+
+<Warning>
+Only appointments with status `scheduled`, `confirmed`, or `completed` block time slots. Cancelled and no-show appointments don't prevent booking.
+</Warning>
+
+## Viewing and Filtering Appointments
+
+### Staff View
+
+Staff can view and filter appointments (AppointmentController.php:18-42):
+
+```php
+// Doctors only see their own appointments
+if ($request->user()->hasRole('doctor')) {
+    $query->where('doctor_id', $request->user()->id);
+}
+
+// Filter by doctor (admin/receptionist)
+if ($request->has('doctor_id')) {
+    $query->where('doctor_id', $request->get('doctor_id'));
+}
+
+// Filter by date
+if ($request->has('date')) {
+    $query->whereDate('start_time', $request->get('date'));
+}
+```
+
+**Route:** `appointments.index` → `AppointmentController@index`
+
+### Patient View
+
+Patients see only their own appointments:
+
+**Route:** `patient.appointments` → `PatientPortalController@appointments`  
+**Endpoint:** `GET /my-appointments`
+
+## Updating Appointments
+
+Update appointment status and details:
+
+**Route:** `appointments.update` → `AppointmentController@update`  
+**Action:** `UpdateAppointmentAction`
+
+```php
+// Allowed updates (AppointmentController.php:78-90)
+$validated = $request->validate([
+    'status' => 'sometimes|in:scheduled,confirmed,completed,cancelled,no_show',
+    'start_time' => 'sometimes|date',
+    'end_time' => 'sometimes|date|after:start_time',
+    'notes' => 'nullable|string',
+]);
+```
+
+<Info>
+Updating appointment times re-validates availability to prevent conflicts.
+</Info>
+
+## Calendar View
+
+Appointments display in a calendar interface showing:
+
+- Daily, weekly, and monthly views
+- Color-coded by status
+- Doctor filtering
+- Quick status updates
+
+## Relationships
+
+```php
+// Appointment.php relationships
+
+// Belongs to Patient
+public function patient(): BelongsTo
+{
+    return $this->belongsTo(Patient::class);
+}
+
+// Belongs to Doctor (User)
+public function doctor(): BelongsTo
+{
+    return $this->belongsTo(User::class, 'doctor_id');
+}
+```
+
+## Access Control
+
+<AccordionGroup>
+  <Accordion title="Admin">
+    - View all appointments
+    - Create appointments for any patient/doctor
+    - Update any appointment
+    - Delete appointments
+    - Filter by doctor and date
+  </Accordion>
+  
+  <Accordion title="Doctor">
+    - View only their own appointments
+    - Create appointments with themselves
+    - Update appointment status
+    - Cannot delete appointments
+  </Accordion>
+  
+  <Accordion title="Receptionist">
+    - View all appointments
+    - Create appointments for any patient/doctor
+    - Update appointment status
+    - Delete appointments
+  </Accordion>
+  
+  <Accordion title="Patient">
+    - View only their own appointments
+    - Book new appointments through patient portal
+    - Cannot modify or cancel through portal
+  </Accordion>
+</AccordionGroup>
+
+## Database Schema
+
+```sql
+CREATE TABLE appointments (
+    id BIGINT PRIMARY KEY,
+    patient_id BIGINT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    doctor_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    status VARCHAR(255) DEFAULT 'scheduled',
+    reason VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Confirm Appointments" icon="check">
+    Change status to 'confirmed' when patients confirm attendance
+  </Card>
+  
+  <Card title="Update Status Promptly" icon="clock">
+    Mark as 'completed' or 'no_show' after appointment time
+  </Card>
+  
+  <Card title="Use Notes Field" icon="note-sticky">
+    Add important information like special requirements
+  </Card>
+  
+  <Card title="Regular Schedule Updates" icon="calendar-check">
+    Keep doctor schedules current for accurate availability
+  </Card>
+</CardGroup>

@@ -1,0 +1,455 @@
+---
+title: Doctor Guide
+description: Complete guide for doctors using Nguhöe EHR to manage patients and consultations
+---
+
+# Doctor Guide
+
+This guide covers all features available to doctors in the Nguhöe EHR system, including appointment management, consultation documentation, prescription creation, and availability scheduling.
+
+## Access Level
+
+As a doctor, you can:
+- View and manage your own appointments
+- Access patient records for scheduled patients
+- Document consultations with vital signs
+- Create and manage prescriptions
+- Configure your availability schedule
+- View your appointment calendar
+
+<Note>
+Doctors can only view consultations they have personally created. You cannot view other doctors' consultations.
+</Note>
+
+---
+
+## Dashboard Overview
+
+When you log in, you'll see your personalized dashboard at `/dashboard` showing:
+- Upcoming appointments for today
+- Recent patient consultations
+- Quick access to common tasks
+
+**Screenshot: Doctor dashboard with today's appointments and quick actions**
+
+---
+
+## Managing Your Appointments
+
+### Viewing Your Schedule
+
+<Steps>
+  <Step title="Access Appointments">
+    Click **Appointments** in the main navigation
+    
+    By default, you'll only see appointments assigned to you.
+  </Step>
+  
+  <Step title="Filter by Date">
+    Use the date filter to view appointments for specific days
+    
+    **Screenshot: Appointment list with date filter**
+  </Step>
+  
+  <Step title="Review Appointment Details">
+    Each appointment shows:
+    - Patient name
+    - Scheduled time (start and end)
+    - Reason for visit
+    - Current status
+    - Any notes added by reception
+  </Step>
+</Steps>
+
+### Appointment Statuses
+
+Appointments progress through these statuses:
+- **Scheduled**: Initial booking
+- **Confirmed**: Patient confirmed attendance
+- **Completed**: Patient was seen and consultation documented
+- **Cancelled**: Appointment was cancelled
+- **No Show**: Patient did not attend
+
+### Updating Appointment Status
+
+<Steps>
+  <Step title="Select Appointment">
+    Find the appointment you want to update
+  </Step>
+  
+  <Step title="Change Status">
+    Click the status dropdown or edit button
+  </Step>
+  
+  <Step title="Select New Status">
+    Choose the appropriate status:
+    - Mark as **Confirmed** when patient arrives
+    - Mark as **Completed** after finishing consultation
+    - Mark as **No Show** if patient doesn't attend
+  </Step>
+  
+  <Step title="Add Notes (Optional)">
+    Add any relevant notes about the appointment
+  </Step>
+</Steps>
+
+---
+
+## Setting Your Availability Schedule
+
+Configure when you're available for appointments so patients can book online.
+
+### Configuring Your Schedule
+
+<Steps>
+  <Step title="Navigate to Schedule Settings">
+    Click **My Schedule** in the navigation menu to access `/my-schedule`
+  </Step>
+  
+  <Step title="Review Default Schedule">
+    The system shows a 7-day week (Sunday to Saturday)
+    
+    Default settings:
+    - Monday-Friday: 09:00 - 18:00 (Working)
+    - Saturday-Sunday: Not working
+    
+    **Screenshot: Schedule configuration page showing weekly calendar**
+  </Step>
+  
+  <Step title="Configure Each Day">
+    For each day of the week:
+    
+    - Toggle **Working** checkbox to mark if you work that day
+    - Set **Start Time** (e.g., 09:00)
+    - Set **End Time** (e.g., 18:00)
+    
+    <Info>
+    Times must be in 24-hour format. The end time must be after the start time.
+    </Info>
+  </Step>
+  
+  <Step title="Save Your Schedule">
+    Click **Save Schedule** to update your availability
+    
+    Your schedule will be immediately available for patient bookings.
+  </Step>
+</Steps>
+
+### Schedule Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Buffer Time" icon="clock">
+    Leave gaps between appointments for documentation and emergencies
+  </Card>
+  
+  <Card title="Lunch Breaks" icon="utensils">
+    Create non-working periods by setting separate morning and afternoon schedules
+  </Card>
+  
+  <Card title="Consistent Schedule" icon="calendar-check">
+    Maintain a regular schedule to build patient trust and booking patterns
+  </Card>
+  
+  <Card title="Update Promptly" icon="bell">
+    Update your schedule as soon as you know about time off or schedule changes
+  </Card>
+</CardGroup>
+
+<Note>
+Appointment slots are automatically generated in 30-minute intervals based on your availability. Existing appointments will prevent patients from booking overlapping times.
+</Note>
+
+---
+
+## Patient Records
+
+### Accessing Patient Information
+
+<Steps>
+  <Step title="Navigate to Patients">
+    Click **Patients** in the main menu
+  </Step>
+  
+  <Step title="Search for Patient">
+    Use the search bar to find patients by:
+    - Full name
+    - Document ID
+    - Phone number
+    - Email
+    
+    **Screenshot: Patient search interface**
+  </Step>
+  
+  <Step title="View Patient Record">
+    Click on a patient name to view their complete medical record
+  </Step>
+</Steps>
+
+### Patient Record Contents
+
+Each patient record displays:
+- **Personal Information**: Demographics, contact details
+- **Medical History**: Antecedents, allergies, chronic diseases
+- **Current Medications**: Ongoing treatments
+- **Consultation History**: All past consultations with dates and doctors
+- **Attachments**: Uploaded documents, lab results, images
+- **Prescriptions**: All issued prescriptions
+
+**Screenshot: Patient detail page showing tabs for different sections**
+
+---
+
+## Documenting Consultations
+
+Consultations are the core of patient care documentation in Nguhöe EHR.
+
+### Creating a New Consultation
+
+<Steps>
+  <Step title="Start Consultation">
+    From a patient record or appointment, click **New Consultation**
+    
+    The system will pre-fill:
+    - Patient information
+    - Your details as the attending doctor
+    - Linked appointment (if started from an appointment)
+  </Step>
+  
+  <Step title="Record Vital Signs">
+    Enter the patient's vital signs in the designated section:
+    
+    - **Weight**: In kilograms (0-500 kg)
+    - **Height**: In centimeters (0-300 cm)
+    - **Temperature**: In Celsius (30-45°C)
+    - **Blood Pressure**: Systolic/Diastolic (e.g., 120/80)
+    - **Heart Rate**: Beats per minute (30-220 bpm)
+    - **Respiratory Rate**: Breaths per minute (8-60)
+    - **Oxygen Saturation**: Percentage (50-100%)
+    
+    <Info>
+    All vital signs are optional but recommended for complete records
+    </Info>
+    
+    **Screenshot: Vital signs section of consultation form**
+  </Step>
+  
+  <Step title="Document Clinical Information">
+    Complete the clinical documentation:
+    
+    **Reason for Visit** (Required)
+    - Brief description of why patient is seeking care
+    
+    **Clinical Findings** (Optional)
+    - Physical examination findings
+    - Observations and symptoms
+    
+    **Diagnosis** (Required)
+    - Primary diagnosis
+    - ICD codes if applicable
+    - Secondary diagnoses
+    
+    **Treatment Plan** (Optional)
+    - Recommended treatments
+    - Follow-up instructions
+    - Lifestyle modifications
+  </Step>
+  
+  <Step title="Add Prescription">
+    If prescribing medication, add prescription items:
+    
+    For each medication:
+    - **Medication Name**: Drug name and strength
+    - **Dosage**: Amount per dose (e.g., "500mg")
+    - **Frequency**: How often (e.g., "3 times daily")
+    - **Duration**: How long (e.g., "7 days")
+    
+    Click **Add Medication** to add multiple items
+    
+    **Prescription Instructions** (Optional)
+    - Special instructions for the patient
+    - Warnings or precautions
+    
+    **Screenshot: Prescription section showing multiple medications**
+  </Step>
+  
+  <Step title="Record Payment (Optional)">
+    If collecting payment during consultation:
+    - Enter **Payment Amount**
+    - Select **Payment Method** (cash, card, transfer)
+    
+    <Note>
+    Payments can also be recorded separately by reception staff
+    </Note>
+  </Step>
+  
+  <Step title="Save Consultation">
+    Review all information and click **Save Consultation**
+    
+    You'll be redirected to the patient's record where you can:
+    - View the completed consultation
+    - Download the prescription (if created)
+    - Add additional notes
+  </Step>
+</Steps>
+
+### Viewing Past Consultations
+
+<Steps>
+  <Step title="Access Patient Record">
+    Navigate to the patient's profile page
+  </Step>
+  
+  <Step title="View Consultation History">
+    Scroll to the **Consultations** section
+    
+    Each consultation shows:
+    - Date and time
+    - Attending doctor
+    - Diagnosis
+    - Link to full details
+  </Step>
+  
+  <Step title="Open Full Consultation">
+    Click on any consultation to view complete details including:
+    - All vital signs
+    - Clinical notes
+    - Diagnosis and treatment plan
+    - Associated prescription
+    - Payment information
+    
+    **Screenshot: Consultation detail view**
+  </Step>
+</Steps>
+
+<Warning>
+You can only view consultations you have personally created. Other doctors' consultations are not accessible unless you are an administrator.
+</Warning>
+
+---
+
+## Prescriptions
+
+### Creating Prescriptions
+
+Prescriptions are created as part of the consultation process (see above).
+
+### Managing Prescriptions
+
+<Steps>
+  <Step title="View Patient Prescriptions">
+    From a patient's record, view all issued prescriptions
+  </Step>
+  
+  <Step title="Preview Prescription">
+    Click **Preview** to see the formatted prescription document
+    
+    The prescription includes:
+    - Patient information
+    - Doctor details
+    - Date of issue
+    - All prescribed medications with dosages
+    - Special instructions
+    - Doctor's signature line
+  </Step>
+  
+  <Step title="Download or Print">
+    Click **Download** to get a PDF version
+    
+    The patient can also access their prescriptions through the patient portal.
+  </Step>
+</Steps>
+
+### Prescription Best Practices
+
+- Always include clear dosage instructions
+- Specify duration of treatment
+- Include warnings for medications with specific requirements
+- Use generic names when possible
+- Double-check for drug interactions
+
+---
+
+## Quick Start Workflow
+
+Typical daily workflow for doctors:
+
+<Steps>
+  <Step title="Morning: Review Schedule">
+    - Log in and check dashboard
+    - Review today's appointments
+    - Note any special cases or new patients
+  </Step>
+  
+  <Step title="Before Each Patient">
+    - Pull up patient's medical record
+    - Review past consultations
+    - Check current medications and allergies
+  </Step>
+  
+  <Step title="During Consultation">
+    - Mark appointment as "Confirmed" when patient arrives
+    - Conduct examination
+    - Take notes on clinical findings
+  </Step>
+  
+  <Step title="After Consultation">
+    - Document consultation immediately
+    - Record all vital signs and findings
+    - Create prescription if needed
+    - Mark appointment as "Completed"
+  </Step>
+  
+  <Step title="End of Day">
+    - Review incomplete appointments
+    - Mark "No Show" for missed appointments
+    - Update notes for follow-up patients
+  </Step>
+</Steps>
+
+---
+
+## Tips for Efficient Documentation
+
+<CardGroup cols={2}>
+  <Card title="Document Immediately" icon="clock">
+    Complete consultation documentation right after seeing the patient while details are fresh
+  </Card>
+  
+  <Card title="Use Templates" icon="file-lines">
+    Develop personal templates for common conditions to speed up documentation
+  </Card>
+  
+  <Card title="Complete Vital Signs" icon="heart-pulse">
+    Record all vital signs for every consultation - they're valuable for tracking trends
+  </Card>
+  
+  <Card title="Detailed Diagnoses" icon="notes-medical">
+    Include specific diagnoses rather than symptoms - improves patient care continuity
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot See Another Doctor's Consultation">
+    This is by design. Doctors can only access their own consultations for patient privacy. If you need to see another doctor's notes, ask an administrator.
+  </Accordion>
+  
+  <Accordion title="Patient Cannot Book Appointment">
+    Check your schedule settings in **My Schedule**. Ensure you have marked working days and times. Verify you don't have existing appointments blocking the time slot.
+  </Accordion>
+  
+  <Accordion title="Cannot Create Prescription">
+    Prescriptions must be created as part of a consultation. Start a new consultation first, then add the prescription in the prescription section.
+  </Accordion>
+  
+  <Accordion title="Vital Signs Not Saving">
+    Ensure values are within acceptable ranges. The system validates vital signs to prevent data entry errors.
+  </Accordion>
+</AccordionGroup>
+
+## Need Help?
+
+For technical issues or questions about system features, contact your system administrator or support team.

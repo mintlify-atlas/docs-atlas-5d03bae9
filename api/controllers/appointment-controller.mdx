@@ -1,0 +1,283 @@
+---
+title: Appointment Controller
+description: API endpoints for managing patient appointments in the Nguhöe EHR system
+---
+
+The Appointment Controller handles scheduling and management of patient appointments with doctors. Access is restricted to authenticated users with admin, doctor, or receptionist roles.
+
+## Authentication
+
+All endpoints require:
+- Middleware: `auth`, `verified`
+- Role: `admin`, `doctor`, or `receptionist`
+
+## Endpoints
+
+### List Appointments
+
+```http
+GET /appointments
+```
+
+Returns a paginated list of appointments with patient and doctor information.
+
+#### Query Parameters
+
+<ParamField query="doctor_id" type="integer" optional>
+  Filter appointments by doctor ID. Note: Doctors automatically see only their own appointments regardless of this parameter.
+</ParamField>
+
+<ParamField query="date" type="date" optional>
+  Filter appointments by date (format: YYYY-MM-DD)
+</ParamField>
+
+<ParamField query="page" type="integer" optional default="1">
+  Page number for pagination
+</ParamField>
+
+#### Response
+
+Returns an Inertia render with:
+
+<ResponseField name="appointments" type="object">
+  Paginated collection of appointments
+  
+  <ResponseField name="data" type="array">
+    Array of appointment objects
+    
+    <ResponseField name="id" type="integer">
+      Appointment ID
+    </ResponseField>
+    
+    <ResponseField name="patient_id" type="integer">
+      Patient ID
+    </ResponseField>
+    
+    <ResponseField name="patient" type="object">
+      Patient information
+    </ResponseField>
+    
+    <ResponseField name="doctor_id" type="integer">
+      Doctor (User) ID
+    </ResponseField>
+    
+    <ResponseField name="doctor" type="object">
+      Doctor information
+    </ResponseField>
+    
+    <ResponseField name="start_time" type="datetime">
+      Appointment start time
+    </ResponseField>
+    
+    <ResponseField name="end_time" type="datetime">
+      Appointment end time
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Appointment status: `scheduled`, `confirmed`, `completed`, `cancelled`, or `no_show`
+    </ResponseField>
+    
+    <ResponseField name="reason" type="string">
+      Reason for appointment
+    </ResponseField>
+    
+    <ResponseField name="notes" type="string">
+      Additional notes
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="current_page" type="integer">
+    Current page number
+  </ResponseField>
+  
+  <ResponseField name="per_page" type="integer">
+    Items per page (20)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="doctors" type="array">
+  List of doctors for filtering (id and name)
+</ResponseField>
+
+<ResponseField name="filters" type="object">
+  Active filters (doctor_id, date)
+</ResponseField>
+
+#### Role-Based Filtering
+
+- **Doctors**: Automatically filtered to show only their own appointments
+- **Admin/Receptionist**: Can view all appointments or filter by doctor
+
+---
+
+### Create Appointment Form
+
+```http
+GET /appointments/create
+```
+
+Displays the form for creating a new appointment.
+
+#### Query Parameters
+
+<ParamField query="patient_id" type="integer" optional>
+  Pre-select a patient for the appointment
+</ParamField>
+
+#### Response
+
+Returns an Inertia render with:
+
+<ResponseField name="patients" type="array">
+  List of all patients (id and full_name) sorted alphabetically
+</ResponseField>
+
+<ResponseField name="doctors" type="array">
+  List of doctors (id and name)
+</ResponseField>
+
+<ResponseField name="selected_patient_id" type="integer">
+  Pre-selected patient ID from query parameter
+</ResponseField>
+
+---
+
+### Store Appointment
+
+```http
+POST /appointments
+```
+
+Creates a new appointment.
+
+#### Request Body
+
+<ParamField body="patient_id" type="integer" required>
+  Patient ID (must exist in patients table)
+</ParamField>
+
+<ParamField body="doctor_id" type="integer" required>
+  Doctor ID (must exist in users table)
+</ParamField>
+
+<ParamField body="start_time" type="datetime" required>
+  Appointment start time (format: YYYY-MM-DD HH:MM:SS)
+</ParamField>
+
+<ParamField body="end_time" type="datetime" required>
+  Appointment end time (must be after start_time)
+</ParamField>
+
+<ParamField body="reason" type="string" optional>
+  Reason for appointment (max 255 characters)
+</ParamField>
+
+<ParamField body="notes" type="string" optional>
+  Additional notes
+</ParamField>
+
+#### Validation
+
+- `patient_id`: Must exist in patients table
+- `doctor_id`: Must exist in users table
+- `start_time`: Must be a valid date
+- `end_time`: Must be a valid date and after `start_time`
+
+#### Response
+
+Redirects back with success message: "Cita agendada correctamente."
+
+---
+
+### Update Appointment
+
+```http
+PUT /appointments/{appointment}
+```
+
+Updates an existing appointment. Commonly used for status changes and rescheduling.
+
+#### Path Parameters
+
+<ParamField path="appointment" type="integer" required>
+  Appointment ID
+</ParamField>
+
+#### Request Body
+
+All fields are optional:
+
+<ParamField body="status" type="string" optional>
+  Appointment status. Must be one of: `scheduled`, `confirmed`, `completed`, `cancelled`, `no_show`
+</ParamField>
+
+<ParamField body="start_time" type="datetime" optional>
+  New start time
+</ParamField>
+
+<ParamField body="end_time" type="datetime" optional>
+  New end time (must be after start_time if provided)
+</ParamField>
+
+<ParamField body="notes" type="string" optional>
+  Updated notes
+</ParamField>
+
+#### Status Values
+
+- `scheduled`: Initial state when appointment is created
+- `confirmed`: Appointment confirmed by patient or staff
+- `completed`: Appointment has been completed
+- `cancelled`: Appointment cancelled
+- `no_show`: Patient did not show up for appointment
+
+#### Response
+
+Redirects back with success message: "Cita actualizada."
+
+---
+
+### Delete Appointment
+
+```http
+DELETE /appointments/{appointment}
+```
+
+Soft deletes an appointment.
+
+#### Path Parameters
+
+<ParamField path="appointment" type="integer" required>
+  Appointment ID
+</ParamField>
+
+#### Response
+
+Redirects back with success message: "Cita eliminada."
+
+## Implementation Details
+
+- Source: `app/Http/Controllers/AppointmentController.php`
+- Route: `/appointments`
+- Uses action classes: `CreateAppointmentAction`, `UpdateAppointmentAction`
+- Pagination: 20 records per page
+- Appointments sorted by `start_time` (latest first)
+- Soft deletes enabled
+- Relationships: Eager loads `patient` and `doctor` for performance
+
+## Date/Time Handling
+
+- All datetime fields are automatically cast to Carbon instances
+- Dates should be provided in ISO 8601 format: `YYYY-MM-DD HH:MM:SS`
+- Filtering by date uses `whereDate()` for date-only comparison
+
+## Role-Specific Behavior
+
+### Doctor Role
+- Automatically sees only their own appointments in the index
+- Cannot filter by other doctors
+
+### Admin/Receptionist Roles
+- Can view all appointments
+- Can filter by any doctor
+- Full CRUD access to all appointments

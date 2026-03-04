@@ -1,0 +1,515 @@
+---
+title: Receptionist Guide
+description: Complete guide for receptionists managing front desk operations in Nguhöe EHR
+---
+
+# Receptionist Guide
+
+This guide covers all features available to receptionists for front desk operations, including patient registration, appointment scheduling, payment processing, and patient record management.
+
+## Access Level
+
+As a receptionist, you can:
+- Register new patients
+- Schedule and manage appointments for all doctors
+- Access patient contact and demographic information
+- Process payments and billing
+- Update appointment statuses
+- View appointment schedules across all doctors
+
+<Note>
+Receptionists have limited access to clinical information. You can view basic patient data but cannot create consultations or prescriptions.
+</Note>
+
+---
+
+## Dashboard Overview
+
+When you log in, your dashboard at `/dashboard` displays:
+- Today's appointments across all doctors
+- Recently registered patients
+- Quick access to common tasks
+
+**Screenshot: Receptionist dashboard showing daily schedule**
+
+---
+
+## Patient Registration
+
+Registering new patients is one of your primary responsibilities.
+
+### Registering a New Patient
+
+<Steps>
+  <Step title="Navigate to Patients">
+    Click **Patients** in the main navigation menu
+  </Step>
+  
+  <Step title="Start New Registration">
+    Click the **New Patient** button in the top right
+    
+    **Screenshot: Patient list with "New Patient" button highlighted**
+  </Step>
+  
+  <Step title="Enter Personal Information">
+    Complete all required patient details:
+    
+    **Basic Information**
+    - **Full Name**: Patient's complete legal name
+    - **Document ID**: National ID, passport, or similar
+    - **Birth Date**: Use date picker or enter manually
+    - **Gender**: Male, Female, or Other
+    
+    **Contact Information**
+    - **Phone**: Primary contact number
+    - **Email**: For appointment reminders and portal access
+    - **Address**: Complete residential address
+    
+    **Screenshot: Patient registration form - personal information section**
+  </Step>
+  
+  <Step title="Add Medical History">
+    Collect and enter medical background:
+    
+    - **Medical Antecedents**: Past medical conditions or surgeries
+    - **Allergies**: Known drug or environmental allergies
+    - **Chronic Diseases**: Ongoing health conditions (diabetes, hypertension, etc.)
+    - **Current Medications**: Medications the patient is currently taking
+    - **Notes**: Any additional relevant information
+    
+    <Info>
+    This information is crucial for doctor consultations. Be as thorough as possible.
+    </Info>
+    
+    **Screenshot: Medical history section of registration form**
+  </Step>
+  
+  <Step title="Review and Save">
+    - Double-check all information for accuracy
+    - Ensure contact details are correct for follow-up
+    - Click **Save Patient** to complete registration
+    
+    You'll be redirected to the patient list with a confirmation message.
+  </Step>
+</Steps>
+
+### Editing Patient Information
+
+<Steps>
+  <Step title="Find the Patient">
+    Use the search bar to locate the patient by:
+    - Name
+    - Document ID
+    - Phone number
+    - Email address
+  </Step>
+  
+  <Step title="Open Patient Record">
+    Click on the patient's name to view their full record
+  </Step>
+  
+  <Step title="Edit Details">
+    Click the **Edit** button
+    
+    Update any personal or contact information as needed.
+  </Step>
+  
+  <Step title="Save Changes">
+    Click **Update Patient** to save modifications
+  </Step>
+</Steps>
+
+<Warning>
+Receptionists cannot delete patient records. Contact an administrator if a patient record needs to be removed.
+</Warning>
+
+---
+
+## Appointment Scheduling
+
+Managing appointments is a core receptionist function.
+
+### Viewing All Appointments
+
+<Steps>
+  <Step title="Access Appointments">
+    Click **Appointments** in the main navigation
+    
+    You'll see appointments for all doctors in the system.
+  </Step>
+  
+  <Step title="Filter Appointments">
+    Use the filter options to narrow your view:
+    
+    - **Doctor**: Select a specific doctor to view only their appointments
+    - **Date**: Choose a date to see appointments for that day
+    
+    **Screenshot: Appointment list with filter dropdowns**
+  </Step>
+  
+  <Step title="View Appointment Details">
+    Each appointment displays:
+    - Patient name
+    - Doctor name
+    - Scheduled time (start and end)
+    - Status (scheduled, confirmed, completed, etc.)
+    - Reason for visit
+  </Step>
+</Steps>
+
+### Scheduling New Appointments
+
+<Steps>
+  <Step title="Start New Appointment">
+    Click **New Appointment** from the appointments page
+  </Step>
+  
+  <Step title="Select Patient">
+    Choose the patient from the dropdown list
+    
+    <Info>
+    The patient must be registered in the system first. If the patient is new, register them before scheduling.
+    </Info>
+    
+    **Screenshot: New appointment form with patient dropdown**
+  </Step>
+  
+  <Step title="Choose Doctor">
+    Select which doctor the patient wants to see from the dropdown
+  </Step>
+  
+  <Step title="Set Date and Time">
+    - **Start Time**: Pick the appointment date and time
+    - **End Time**: Usually 30 minutes after start (automatically suggested)
+    
+    <Warning>
+    Check that the time slot doesn't conflict with existing appointments
+    </Warning>
+  </Step>
+  
+  <Step title="Add Details">
+    - **Reason**: Brief description of why the patient is visiting
+    - **Notes**: Any special instructions or requirements
+  </Step>
+  
+  <Step title="Confirm Booking">
+    Click **Schedule Appointment** to create the appointment
+    
+    The appointment will be created with "scheduled" status.
+  </Step>
+</Steps>
+
+### Quick Scheduling from Patient Record
+
+You can also schedule appointments directly from a patient's record page:
+
+<Steps>
+  <Step title="Open Patient Record">
+    Navigate to the patient's detail page
+  </Step>
+  
+  <Step title="Click Schedule Appointment">
+    Click the **Schedule Appointment** button
+    
+    The patient will be pre-selected in the appointment form.
+  </Step>
+  
+  <Step title="Complete Appointment Details">
+    Select doctor, time, and reason, then save
+  </Step>
+</Steps>
+
+### Managing Appointment Status
+
+<Steps>
+  <Step title="Locate Appointment">
+    Find the appointment you need to update
+  </Step>
+  
+  <Step title="Update Status">
+    Click the edit or status button to change the appointment status:
+    
+    - **Scheduled**: Initial booking status
+    - **Confirmed**: Mark when patient confirms attendance (by phone or in person)
+    - **Completed**: Updated by doctor after consultation
+    - **Cancelled**: If patient cancels
+    - **No Show**: If patient doesn't arrive for scheduled appointment
+  </Step>
+  
+  <Step title="Add Notes">
+    Include any relevant information about status changes
+  </Step>
+  
+  <Step title="Save Update">
+    Click **Update** to save the status change
+  </Step>
+</Steps>
+
+### Cancelling Appointments
+
+<Steps>
+  <Step title="Find the Appointment">
+    Locate the appointment to be cancelled
+  </Step>
+  
+  <Step title="Change to Cancelled">
+    Update the status to **Cancelled**
+  </Step>
+  
+  <Step title="Document Reason">
+    Add a note explaining why the appointment was cancelled
+  </Step>
+</Steps>
+
+<Info>
+Appointments can also be deleted by clicking the delete button, but changing status to "Cancelled" maintains better record keeping.
+</Info>
+
+---
+
+## Payment Processing
+
+Receptionists handle payment collection and billing.
+
+### Viewing Payment History
+
+<Steps>
+  <Step title="Navigate to Payments">
+    Click **Payments** in the main navigation to access `/payments`
+  </Step>
+  
+  <Step title="Review Payment List">
+    The payments page shows:
+    - Patient name
+    - Payment amount
+    - Payment method (cash, card, transfer)
+    - Status (paid, pending, cancelled)
+    - Associated consultation (if any)
+    - Payment date
+    
+    **Screenshot: Payment history list with search bar**
+  </Step>
+  
+  <Step title="Search Payments">
+    Use the search bar to find payments by patient name
+  </Step>
+</Steps>
+
+### Recording a New Payment
+
+<Steps>
+  <Step title="Access Payment Module">
+    Navigate to **Payments** and click **New Payment**
+  </Step>
+  
+  <Step title="Select Patient">
+    Choose the patient making the payment from the dropdown
+  </Step>
+  
+  <Step title="Link to Consultation (Optional)">
+    If the payment is for a specific consultation:
+    - Select the consultation from the dropdown
+    - This helps with record keeping and reporting
+  </Step>
+  
+  <Step title="Enter Payment Details">
+    Complete the payment information:
+    
+    - **Amount**: Total payment amount
+    - **Payment Method**: Select one:
+      - Cash
+      - Card (credit/debit)
+      - Bank Transfer
+    - **Status**: Usually "Paid" for immediate payments
+    - **Notes**: Invoice number, receipt details, or other information
+    
+    **Screenshot: New payment form**
+  </Step>
+  
+  <Step title="Submit Payment">
+    Click **Save Payment** to record the transaction
+    
+    The payment will be immediately reflected in reports.
+  </Step>
+</Steps>
+
+### Processing Payments After Consultation
+
+When a patient finishes their doctor visit:
+
+<Steps>
+  <Step title="Identify the Consultation">
+    Ask the doctor or check the patient's recent consultations
+  </Step>
+  
+  <Step title="Create Payment Record">
+    Record the payment as described above, linking to the consultation
+  </Step>
+  
+  <Step title="Provide Receipt">
+    Give the patient their receipt or proof of payment
+  </Step>
+</Steps>
+
+### Handling Pending Payments
+
+For patients who need to pay later:
+
+<Steps>
+  <Step title="Record as Pending">
+    Create a payment record with status **Pending**
+  </Step>
+  
+  <Step title="Add Follow-up Notes">
+    Include when payment is expected or follow-up arrangements
+  </Step>
+  
+  <Step title="Update When Paid">
+    When payment is received, edit the record and change status to **Paid**
+  </Step>
+</Steps>
+
+---
+
+## Front Desk Daily Workflow
+
+Typical daily tasks for receptionists:
+
+<Steps>
+  <Step title="Morning Setup">
+    - Review today's appointment schedule
+    - Note which doctors are working
+    - Check for any special appointments or notes
+  </Step>
+  
+  <Step title="Patient Arrival">
+    When each patient arrives:
+    - Verify patient identity
+    - Confirm appointment in system
+    - Update appointment status to "Confirmed"
+    - Direct patient to waiting area
+  </Step>
+  
+  <Step title="New Patient Registration">
+    For first-time patients:
+    - Complete full registration form
+    - Collect medical history
+    - Create patient account
+    - Schedule appointment
+  </Step>
+  
+  <Step title="Appointment Calls">
+    - Call patients to confirm tomorrow's appointments
+    - Reschedule cancellations as needed
+    - Update appointment statuses
+  </Step>
+  
+  <Step title="Payment Processing">
+    After each consultation:
+    - Process patient payment
+    - Link payment to consultation
+    - Provide receipt
+  </Step>
+  
+  <Step title="End of Day">
+    - Review completed vs scheduled appointments
+    - Mark "No Show" for missed appointments
+    - Prepare schedule for next day
+    - Reconcile daily payments
+  </Step>
+</Steps>
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Accurate Data Entry" icon="keyboard">
+    Double-check patient information during registration to prevent issues with records and communication
+  </Card>
+  
+  <Card title="Appointment Confirmation" icon="phone">
+    Call to confirm appointments 24 hours in advance to reduce no-shows
+  </Card>
+  
+  <Card title="Clear Communication" icon="comments">
+    Keep clear notes on appointments about special requirements or rescheduling needs
+  </Card>
+  
+  <Card title="Payment Documentation" icon="file-invoice-dollar">
+    Always link payments to consultations when applicable for accurate financial reporting
+  </Card>
+</CardGroup>
+
+---
+
+## Searching and Finding Records
+
+### Finding Patients
+
+The patient search feature supports multiple search methods:
+
+- **By Name**: Enter full or partial name
+- **By Document ID**: Enter national ID or passport number
+- **By Phone**: Search using phone number
+- **By Email**: Find by email address
+
+**Screenshot: Patient search results showing multiple matches**
+
+<Tip>
+Use partial searches if you're unsure of exact spelling. The system will return all matching results.
+</Tip>
+
+### Finding Appointments
+
+Use filters to quickly locate appointments:
+- Filter by specific doctor
+- Filter by date
+- Combine filters for precise results
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot Find Patient Record">
+    - Verify spelling of patient name
+    - Try searching by document ID or phone
+    - Check if patient was registered under a different name
+    - Contact administrator if you believe the record was deleted
+  </Accordion>
+  
+  <Accordion title="Appointment Time Conflicts">
+    - Check doctor's availability schedule
+    - Verify there isn't an existing appointment at that time
+    - Confirm the doctor is marked as working that day
+    - Consider alternative time slots
+  </Accordion>
+  
+  <Accordion title="Cannot Delete Patient">
+    Only administrators can delete patient records. Mark the patient as inactive or contact your administrator.
+  </Accordion>
+  
+  <Accordion title="Payment Not Showing in Reports">
+    - Ensure payment status is set to "Paid"
+    - Check that the payment date is within the report period
+    - Verify the payment was saved successfully
+  </Accordion>
+  
+  <Accordion title="Cannot Access Consultation Details">
+    Receptionists have limited access to clinical information. Consult with the doctor or administrator if you need specific consultation details.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Tips for Efficiency
+
+- **Use Keyboard Shortcuts**: Tab through form fields for faster data entry
+- **Keep Windows Open**: Open patient records in new tabs when booking multiple appointments
+- **Prepare Templates**: Keep standard appointment reasons saved for quick selection
+- **Regular Breaks**: Take short breaks during slow periods to maintain accuracy during busy times
+
+## Need Help?
+
+For technical issues or questions about system features, contact your system administrator or support team.

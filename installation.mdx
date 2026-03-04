@@ -1,0 +1,867 @@
+---
+title: Installation
+description: Complete guide for installing Nguhöe EHR in production environments
+---
+
+## Overview
+
+This guide covers production installation of Nguhöe EHR with proper security, optimization, and reliability configurations. For development setup, see the [Quick start guide](/quickstart).
+
+<Warning>
+Production deployment requires careful attention to security, backups, and performance. Read this entire guide before deploying.
+</Warning>
+
+## System requirements
+
+### Server requirements
+
+<Info>
+These requirements are based on the actual dependencies in `composer.json:11-23`.
+</Info>
+
+- **PHP 8.2+** with extensions:
+  - `sqlite3`, `pdo_mysql`, or `pdo_pgsql` (database drivers)
+  - `mbstring` (multibyte string handling)
+  - `xml` (XML processing)
+  - `curl` (HTTP client)
+  - `zip` (compression)
+  - `gd` or `imagick` (image processing)
+  - `bcmath` (arbitrary precision mathematics)
+  - `fileinfo` (file type detection)
+  - `sodium` (encryption)
+
+- **Database**: One of the following
+  - SQLite 3.35+ (small deployments)
+  - MySQL 8.0+ or MariaDB 10.6+
+  - PostgreSQL 13+
+
+- **Web server**:
+  - Nginx (recommended)
+  - Apache with `mod_rewrite`
+
+- **Composer** 2.0+
+- **Node.js** 18+ and npm
+- **Supervisor** (for queue workers)
+
+### Recommended server specifications
+
+| Deployment size | CPU | RAM | Storage |
+|-----------------|-----|-----|----------|
+| Small (1-5 users) | 2 cores | 2 GB | 20 GB SSD |
+| Medium (5-20 users) | 4 cores | 4 GB | 50 GB SSD |
+| Large (20+ users) | 8 cores | 8 GB | 100 GB SSD |
+
+## Installation steps
+
+<Steps>
+  <Step title="Prepare the server">
+    Update your system and install required packages:
+
+    ### Ubuntu/Debian
+
+    ```bash
+    sudo apt update && sudo apt upgrade -y
+    sudo apt install -y php8.2 php8.2-fpm php8.2-cli php8.2-mysql \
+      php8.2-sqlite3 php8.2-pgsql php8.2-mbstring php8.2-xml \
+      php8.2-curl php8.2-zip php8.2-gd php8.2-bcmath \
+      php8.2-fileinfo php8.2-sodium nginx supervisor git unzip
+    ```
+
+    ### CentOS/RHEL
+
+    ```bash
+    sudo dnf install -y php82 php82-fpm php82-cli php82-mysqlnd \
+      php82-pdo php82-mbstring php82-xml php82-curl php82-zip \
+      php82-gd php82-bcmath nginx supervisor git unzip
+    ```
+
+    Install Composer:
+
+    ```bash
+    curl -sS https://getcomposer.org/installer | php
+    sudo mv composer.phar /usr/local/bin/composer
+    ```
+
+    Install Node.js 18:
+
+    ```bash
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt install -y nodejs
+    ```
+  </Step>
+
+  <Step title="Clone the repository">
+    Clone Nguhöe EHR to your web directory:
+
+    ```bash
+    cd /var/www
+    sudo git clone https://github.com/your-org/nguho-ehr.git nguho-ehr
+    cd nguho-ehr
+    ```
+
+    Set proper ownership:
+
+    ```bash
+    sudo chown -R www-data:www-data /var/www/nguho-ehr
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install PHP dependencies with production optimizations:
+
+    ```bash
+    composer install --optimize-autoloader --no-dev
+    ```
+
+    The `--optimize-autoloader` flag converts PSR-0/4 autoloading to classmap for better performance, and `--no-dev` excludes development packages.
+
+    Install and build JavaScript dependencies:
+
+    ```bash
+    npm install
+    npm run build
+    ```
+
+    <Info>
+    The build process compiles React components and Tailwind CSS into optimized production assets.
+    </Info>
+  </Step>
+
+  <Step title="Configure environment">
+    Copy the example environment file:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Edit `.env` with production values:
+
+    ```bash
+    nano .env
+    ```
+
+    ### Required configurations
+
+    ```bash
+    # Application
+    APP_NAME="Nguhöe EHR"
+    APP_ENV=production
+    APP_DEBUG=false
+    APP_URL=https://your-domain.com
+
+    # Security
+    APP_KEY=  # Generated in next step
+
+    # Localization
+    APP_LOCALE=en
+    APP_FALLBACK_LOCALE=en
+    APP_FAKER_LOCALE=en_US
+    ```
+
+    ### Database configuration
+
+    <Accordion title="SQLite (Small deployments)">
+      ```bash
+      DB_CONNECTION=sqlite
+      # SQLite uses database/database.sqlite by default
+      ```
+
+      Create the database file:
+
+      ```bash
+      touch database/database.sqlite
+      chmod 664 database/database.sqlite
+      ```
+    </Accordion>
+
+    <Accordion title="MySQL/MariaDB (Recommended)">
+      ```bash
+      DB_CONNECTION=mysql
+      DB_HOST=127.0.0.1
+      DB_PORT=3306
+      DB_DATABASE=nguho_ehr
+      DB_USERNAME=nguho_user
+      DB_PASSWORD=your_secure_password
+      ```
+
+      Create the database:
+
+      ```sql
+      CREATE DATABASE nguho_ehr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER 'nguho_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+      GRANT ALL PRIVILEGES ON nguho_ehr.* TO 'nguho_user'@'localhost';
+      FLUSH PRIVILEGES;
+      ```
+    </Accordion>
+
+    <Accordion title="PostgreSQL">
+      ```bash
+      DB_CONNECTION=pgsql
+      DB_HOST=127.0.0.1
+      DB_PORT=5432
+      DB_DATABASE=nguho_ehr
+      DB_USERNAME=nguho_user
+      DB_PASSWORD=your_secure_password
+      ```
+
+      Create the database:
+
+      ```sql
+      CREATE DATABASE nguho_ehr;
+      CREATE USER nguho_user WITH PASSWORD 'your_secure_password';
+      GRANT ALL PRIVILEGES ON DATABASE nguho_ehr TO nguho_user;
+      ```
+    </Accordion>
+
+    ### Session and cache
+
+    ```bash
+    SESSION_DRIVER=database
+    SESSION_LIFETIME=120
+    SESSION_ENCRYPT=false
+
+    CACHE_STORE=database
+    QUEUE_CONNECTION=database
+    ```
+
+    <Note>
+    Database-backed sessions and cache work well for small to medium deployments. For larger deployments, consider Redis.
+    </Note>
+
+    ### Mail configuration
+
+    ```bash
+    MAIL_MAILER=smtp
+    MAIL_HOST=smtp.mailtrap.io
+    MAIL_PORT=587
+    MAIL_USERNAME=your_username
+    MAIL_PASSWORD=your_password
+    MAIL_FROM_ADDRESS="noreply@your-domain.com"
+    MAIL_FROM_NAME="${APP_NAME}"
+    ```
+
+    ### Backup configuration
+
+    Add backup notification email:
+
+    ```bash
+    BACKUP_NOTIFICATION_EMAIL=admin@your-domain.com
+    ```
+  </Step>
+
+  <Step title="Generate application key">
+    Generate a unique encryption key:
+
+    ```bash
+    php artisan key:generate
+    ```
+
+    <Warning>
+    Never share or commit your `APP_KEY`. It encrypts session data and other sensitive information.
+    </Warning>
+  </Step>
+
+  <Step title="Run database migrations">
+    Create all database tables:
+
+    ```bash
+    php artisan migrate --force
+    ```
+
+    The `--force` flag is required in production to confirm migration execution.
+
+    This creates tables for:
+    - Users and authentication
+    - Roles and permissions (Spatie Permission)
+    - Patients
+    - Appointments
+    - Consultations
+    - Prescriptions
+    - Payments
+    - Attachments
+    - Doctor schedules
+    - Jobs queue
+    - Cache and sessions
+  </Step>
+
+  <Step title="Create admin user">
+    Create your first administrator:
+
+    ```bash
+    php artisan tinker
+    ```
+
+    In the Tinker shell:
+
+    ```php
+    $user = App\Models\User::create([
+        'name' => 'Admin User',
+        'email' => 'admin@your-domain.com',
+        'password' => Hash::make('your_secure_password'),
+        'email_verified_at' => now(),
+    ]);
+
+    $user->assignRole('admin');
+    exit
+    ```
+
+    <Warning>
+    Use a strong password for the admin account. Consider using a password manager to generate a secure password.
+    </Warning>
+  </Step>
+
+  <Step title="Set file permissions">
+    Set proper permissions for storage and cache:
+
+    ```bash
+    sudo chown -R www-data:www-data storage bootstrap/cache
+    sudo chmod -R 775 storage bootstrap/cache
+    ```
+
+    If using SQLite:
+
+    ```bash
+    sudo chown www-data:www-data database/database.sqlite
+    sudo chmod 664 database/database.sqlite
+    ```
+
+    <Info>
+    The web server needs write access to `storage`, `bootstrap/cache`, and the SQLite database file.
+    </Info>
+  </Step>
+
+  <Step title="Configure web server">
+    ### Nginx configuration
+
+    Create a new site configuration:
+
+    ```bash
+    sudo nano /etc/nginx/sites-available/nguho-ehr
+    ```
+
+    Add this configuration:
+
+    ```nginx
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name your-domain.com;
+        return 301 https://$server_name$request_uri;
+    }
+
+    server {
+        listen 443 ssl http2;
+        listen [::]:443 ssl http2;
+        server_name your-domain.com;
+        root /var/www/nguho-ehr/public;
+
+        index index.php;
+
+        # SSL Configuration
+        ssl_certificate /etc/ssl/certs/your-cert.pem;
+        ssl_certificate_key /etc/ssl/private/your-key.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        # Client body size (for file uploads)
+        client_max_body_size 20M;
+
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+
+        location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        }
+
+        location ~ /\.(?!well-known).* {
+            deny all;
+        }
+    }
+    ```
+
+    Enable the site:
+
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/nguho-ehr /etc/nginx/sites-enabled/
+    sudo nginx -t
+    sudo systemctl reload nginx
+    ```
+
+    <Accordion title="Apache configuration">
+      If using Apache, create a virtual host:
+
+      ```apache
+      <VirtualHost *:443>
+          ServerName your-domain.com
+          DocumentRoot /var/www/nguho-ehr/public
+
+          SSLEngine on
+          SSLCertificateFile /etc/ssl/certs/your-cert.pem
+          SSLCertificateKeyFile /etc/ssl/private/your-key.pem
+
+          <Directory /var/www/nguho-ehr/public>
+              AllowOverride All
+              Require all granted
+          </Directory>
+
+          ErrorLog ${APACHE_LOG_DIR}/nguho-ehr-error.log
+          CustomLog ${APACHE_LOG_DIR}/nguho-ehr-access.log combined
+      </VirtualHost>
+      ```
+
+      Enable required modules:
+
+      ```bash
+      sudo a2enmod rewrite ssl
+      sudo systemctl reload apache2
+      ```
+    </Accordion>
+  </Step>
+
+  <Step title="Configure SSL certificate">
+    Obtain an SSL certificate using Let's Encrypt:
+
+    ```bash
+    sudo apt install certbot python3-certbot-nginx
+    sudo certbot --nginx -d your-domain.com
+    ```
+
+    Certbot will automatically configure SSL in your Nginx configuration.
+
+    <Info>
+    Certificates auto-renew via cron. Test renewal with: `sudo certbot renew --dry-run`
+    </Info>
+  </Step>
+
+  <Step title="Set up queue worker">
+    Create a Supervisor configuration for the queue worker:
+
+    ```bash
+    sudo nano /etc/supervisor/conf.d/nguho-ehr-worker.conf
+    ```
+
+    Add this configuration:
+
+    ```ini
+    [program:nguho-ehr-worker]
+    process_name=%(program_name)s_%(process_num)02d
+    command=php /var/www/nguho-ehr/artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+    autostart=true
+    autorestart=true
+    stopasgroup=true
+    killasgroup=true
+    user=www-data
+    numprocs=1
+    redirect_stderr=true
+    stdout_logfile=/var/www/nguho-ehr/storage/logs/worker.log
+    stopwaitsecs=3600
+    ```
+
+    Update Supervisor:
+
+    ```bash
+    sudo supervisorctl reread
+    sudo supervisorctl update
+    sudo supervisorctl start nguho-ehr-worker:*
+    ```
+
+    <Info>
+    The queue worker processes background jobs for emails, notifications, and backups.
+    </Info>
+  </Step>
+
+  <Step title="Configure scheduled tasks">
+    Add Laravel's scheduler to crontab:
+
+    ```bash
+    sudo crontab -e -u www-data
+    ```
+
+    Add this line:
+
+    ```cron
+    * * * * * cd /var/www/nguho-ehr && php artisan schedule:run >> /dev/null 2>&1
+    ```
+
+    This enables scheduled tasks including:
+    - Database backups
+    - Log cleanup
+    - Session garbage collection
+  </Step>
+
+  <Step title="Configure backups">
+    Nguhöe EHR uses **Spatie Laravel Backup** for automated backups (from `composer.json:21`).
+
+    Publish the backup configuration:
+
+    ```bash
+    php artisan vendor:publish --provider="Spatie\Backup\BackupServiceProvider"
+    ```
+
+    Edit `config/backup.php` to configure:
+
+    ```php
+    'destination' => [
+        'filename_prefix' => 'nguho-ehr-',
+        'disks' => [
+            'local',
+            // Add 's3' or other cloud storage
+        ],
+    ],
+
+    'notifications' => [
+        'mail' => [
+            'to' => env('BACKUP_NOTIFICATION_EMAIL'),
+        ],
+    ],
+    ```
+
+    Schedule backups in `app/Console/Kernel.php` or add to cron:
+
+    ```bash
+    # Daily backup at 2 AM
+    0 2 * * * cd /var/www/nguho-ehr && php artisan backup:run
+
+    # Weekly cleanup of old backups
+    0 3 * * 0 cd /var/www/nguho-ehr && php artisan backup:clean
+    ```
+
+    Test backup:
+
+    ```bash
+    php artisan backup:run
+    ```
+
+    <Warning>
+    Configure off-site backup storage (S3, Dropbox, etc.) for disaster recovery. Local-only backups are not sufficient.
+    </Warning>
+  </Step>
+</Steps>
+
+## Production optimization
+
+### Cache configuration
+
+Cache configuration and routes for better performance:
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+<Warning>
+Run these commands after every deployment or configuration change.
+</Warning>
+
+### PHP-FPM optimization
+
+Edit PHP-FPM pool configuration:
+
+```bash
+sudo nano /etc/php/8.2/fpm/pool.d/www.conf
+```
+
+Adjust for your server:
+
+```ini
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 10
+pm.min_spare_servers = 5
+pm.max_spare_servers = 20
+pm.max_requests = 500
+```
+
+Restart PHP-FPM:
+
+```bash
+sudo systemctl restart php8.2-fpm
+```
+
+### OPcache configuration
+
+Enable OPcache for PHP:
+
+```bash
+sudo nano /etc/php/8.2/fpm/conf.d/10-opcache.ini
+```
+
+Add:
+
+```ini
+opcache.enable=1
+opcache.memory_consumption=256
+opcache.interned_strings_buffer=16
+opcache.max_accelerated_files=10000
+opcache.revalidate_freq=60
+opcache.fast_shutdown=1
+```
+
+### Database optimization
+
+#### MySQL/MariaDB
+
+```sql
+-- Add indexes for common queries
+CREATE INDEX idx_patients_document ON patients(document_id);
+CREATE INDEX idx_appointments_status ON appointments(status);
+CREATE INDEX idx_appointments_dates ON appointments(start_time, end_time);
+```
+
+#### PostgreSQL
+
+```sql
+-- Vacuum and analyze
+VACUUM ANALYZE;
+
+-- Add indexes
+CREATE INDEX CONCURRENTLY idx_patients_document ON patients(document_id);
+CREATE INDEX CONCURRENTLY idx_appointments_status ON appointments(status);
+```
+
+## Security checklist
+
+<Steps>
+  <Step title="Environment file">
+    - [ ] `.env` file has secure permissions (600)
+    - [ ] `APP_DEBUG=false` in production
+    - [ ] `APP_ENV=production`
+    - [ ] Strong `APP_KEY` generated
+    - [ ] Database credentials are secure
+  </Step>
+
+  <Step title="Web server">
+    - [ ] HTTPS enabled with valid certificate
+    - [ ] HTTP redirects to HTTPS
+    - [ ] Security headers configured
+    - [ ] Hidden files (`.env`, `.git`) are blocked
+    - [ ] File upload size limits configured
+  </Step>
+
+  <Step title="File permissions">
+    - [ ] Web server owns application files
+    - [ ] Storage directories are writable (775)
+    - [ ] `.env` is not web-accessible (600)
+    - [ ] Public directory is the only web-accessible directory
+  </Step>
+
+  <Step title="Database">
+    - [ ] Database user has minimal required privileges
+    - [ ] Database password is strong
+    - [ ] Database backups are configured
+    - [ ] Off-site backup storage is configured
+  </Step>
+
+  <Step title="Application">
+    - [ ] Admin account has strong password
+    - [ ] Email verification is enabled
+    - [ ] Rate limiting is configured
+    - [ ] Failed login attempts are monitored
+  </Step>
+</Steps>
+
+## Monitoring and maintenance
+
+### Log monitoring
+
+Monitor application logs:
+
+```bash
+tail -f storage/logs/laravel.log
+```
+
+For real-time log viewing during troubleshooting:
+
+```bash
+php artisan pail
+```
+
+### Queue monitoring
+
+Check queue worker status:
+
+```bash
+sudo supervisorctl status nguho-ehr-worker
+```
+
+Restart queue worker:
+
+```bash
+sudo supervisorctl restart nguho-ehr-worker:*
+```
+
+### Database maintenance
+
+Regularly optimize database:
+
+```bash
+# MySQL
+mysqlcheck -o -A -u root -p
+
+# PostgreSQL
+psql -U nguho_user -d nguho_ehr -c "VACUUM ANALYZE;"
+```
+
+### Update procedure
+
+When updating Nguhöe EHR:
+
+```bash
+# 1. Backup first
+php artisan backup:run
+
+# 2. Enable maintenance mode
+php artisan down
+
+# 3. Pull latest changes
+git pull origin main
+
+# 4. Update dependencies
+composer install --optimize-autoloader --no-dev
+npm install
+npm run build
+
+# 5. Run migrations
+php artisan migrate --force
+
+# 6. Clear and rebuild cache
+php artisan config:clear
+php artisan cache:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# 7. Restart queue worker
+sudo supervisorctl restart nguho-ehr-worker:*
+
+# 8. Disable maintenance mode
+php artisan up
+```
+
+## Troubleshooting
+
+<Accordion title="500 Internal Server Error">
+  Check the Laravel log:
+
+  ```bash
+  tail -100 storage/logs/laravel.log
+  ```
+
+  Common causes:
+  - Missing `.env` file
+  - Incorrect file permissions
+  - Database connection issues
+  - Missing `APP_KEY`
+</Accordion>
+
+<Accordion title="Queue jobs not processing">
+  Check worker status:
+
+  ```bash
+  sudo supervisorctl status
+  ```
+
+  Restart worker:
+
+  ```bash
+  sudo supervisorctl restart nguho-ehr-worker:*
+  ```
+
+  Check worker logs:
+
+  ```bash
+  tail -f storage/logs/worker.log
+  ```
+</Accordion>
+
+<Accordion title="PDF generation fails">
+  Ensure DomPDF dependencies are installed:
+
+  ```bash
+  sudo apt install -y php8.2-gd php8.2-mbstring
+  ```
+
+  Verify storage permissions:
+
+  ```bash
+  sudo chmod -R 775 storage
+  ```
+</Accordion>
+
+<Accordion title="Backup fails">
+  Check backup configuration:
+
+  ```bash
+  php artisan backup:list
+  ```
+
+  Run backup with verbose output:
+
+  ```bash
+  php artisan backup:run --only-db -v
+  ```
+
+  Verify storage disk configuration in `config/filesystems.php`.
+</Accordion>
+
+<Accordion title="Performance issues">
+  Check these areas:
+
+  1. **OPcache status**:
+     ```bash
+     php -i | grep opcache
+     ```
+
+  2. **Database slow queries**:
+     Enable slow query log in MySQL:
+     ```sql
+     SET GLOBAL slow_query_log = 'ON';
+     SET GLOBAL long_query_time = 2;
+     ```
+
+  3. **Queue backlog**:
+     ```bash
+     php artisan queue:work --once -v
+     ```
+
+  4. **Cache hit rate**:
+     Monitor cache effectiveness and consider Redis for larger deployments.
+</Accordion>
+
+## Next steps
+
+After successful installation:
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/environment">
+    Customize Nguhöe EHR for your clinic
+  </Card>
+  <Card title="User management" icon="users" href="/guides/admin-guide">
+    Create staff accounts and assign roles
+  </Card>
+  <Card title="Backup strategy" icon="database" href="/configuration/backup">
+    Configure comprehensive backup strategy
+  </Card>
+  <Card title="Security hardening" icon="shield" href="/deployment/security">
+    Additional security measures and best practices
+  </Card>
+</CardGroup>
+
+## Support
+
+If you encounter issues:
+
+1. Check the troubleshooting section above
+2. Review Laravel logs in `storage/logs/`
+3. Search existing issues on GitHub
+4. Create a new issue with detailed information

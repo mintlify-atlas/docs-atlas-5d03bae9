@@ -1,0 +1,381 @@
+---
+title: Prescriptions
+description: Create, preview, and download prescription PDFs with medication documentation using dompdf
+icon: prescription
+---
+
+## Overview
+
+The Prescriptions module manages medication documentation in Nguhöe EHR. Prescriptions are created from consultations and can be previewed or downloaded as professional PDF documents using the dompdf library.
+
+<Note>
+All authenticated users can access prescriptions based on their role. The system enforces strict access control to ensure privacy.
+</Note>
+
+## Prescription Data Model
+
+### Core Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `consultation_id` | foreign key | Link to the consultation |
+| `patient_id` | foreign key | Reference to patient |
+| `doctor_id` | foreign key | Reference to prescribing doctor |
+| `items` | JSON array | Medication items with dosage |
+| `general_instructions` | text | General instructions for all medications |
+
+### Medication Items Structure
+
+The `items` field is a JSON array containing medication details:
+
+```json
+[
+  {
+    "medication": "Ibuprofeno 400mg",
+    "dosage": "1 tableta",
+    "frequency": "Cada 8 horas",
+    "duration": "5 días"
+  },
+  {
+    "medication": "Amoxicilina 500mg",
+    "dosage": "1 cápsula",
+    "frequency": "Cada 12 horas",
+    "duration": "7 días"
+  }
+]
+```
+
+<Info>
+The items array is automatically cast to/from JSON by Laravel's Eloquent (Prescription.php:22-24).
+</Info>
+
+## Creating Prescriptions
+
+Prescriptions are created automatically when a consultation includes prescription items:
+
+```php
+// During consultation creation (ConsultationController.php:59-64)
+'prescription_items' => 'nullable|array',
+'prescription_items.*.medication' => 'required_with:prescription_items|string',
+'prescription_items.*.dosage' => 'required_with:prescription_items|string',
+'prescription_items.*.frequency' => 'nullable|string',
+'prescription_items.*.duration' => 'nullable|string',
+'prescription_instructions' => 'nullable|string',
+```
+
+The `CreateConsultationAction` handles prescription creation:
+
+1. Consultation is created
+2. If prescription items exist, create prescription
+3. Link prescription to consultation, patient, and doctor
+
+### Prescription Item Fields
+
+<AccordionGroup>
+  <Accordion title="medication (required)">
+    Name and strength of the medication
+    
+    Examples:
+    - "Metformina 850mg"
+    - "Losartan 50mg"
+    - "Omeprazol 20mg"
+  </Accordion>
+  
+  <Accordion title="dosage (required)">
+    Amount to take per dose
+    
+    Examples:
+    - "1 tableta"
+    - "2 cápsulas"
+    - "10 ml"
+  </Accordion>
+  
+  <Accordion title="frequency (optional)">
+    How often to take the medication
+    
+    Examples:
+    - "Cada 8 horas"
+    - "Dos veces al día"
+    - "Una vez al día en ayunas"
+  </Accordion>
+  
+  <Accordion title="duration (optional)">
+    How long to continue treatment
+    
+    Examples:
+    - "7 días"
+    - "1 mes"
+    - "Uso continuo"
+  </Accordion>
+</AccordionGroup>
+
+## PDF Generation with dompdf
+
+Prescriptions are rendered as professional PDF documents using the dompdf library.
+
+### Preview Prescription
+
+Display the prescription PDF in the browser:
+
+**Route:** `prescriptions.preview` → `PrescriptionController@show`  
+**Endpoint:** `GET /prescriptions/{prescription}/preview`
+
+```php
+// Preview in browser (PrescriptionController.php:62-70)
+public function show(Prescription $prescription, GeneratePrescriptionPdfAction $action)
+{
+    $prescription->load('consultation');
+    $this->authorizeAccess($prescription);
+
+    $pdf = $action->execute($prescription);
+    
+    return $pdf->stream();
+}
+```
+
+### Download Prescription
+
+Download the prescription as a PDF file:
+
+**Route:** `prescriptions.download` → `PrescriptionController@download`  
+**Endpoint:** `GET /prescriptions/{prescription}/download`
+
+```php
+// Download PDF (PrescriptionController.php:47-57)
+public function download(Prescription $prescription, GeneratePrescriptionPdfAction $action)
+{
+    $prescription->load('consultation');
+    $this->authorizeAccess($prescription);
+
+    $pdf = $action->execute($prescription);
+    
+    $filename = "receta-{$prescription->patient->full_name}-" . now()->format('Ymd') . ".pdf";
+    
+    return $pdf->download($filename);
+}
+```
+
+<Info>
+Filenames are automatically generated with patient name and date: `receta-Juan-Perez-20260304.pdf`
+</Info>
+
+### GeneratePrescriptionPdfAction
+
+The `GeneratePrescriptionPdfAction` class handles PDF generation:
+
+- Loads prescription with patient and doctor data
+- Renders a Blade template with prescription details
+- Converts HTML to PDF using dompdf
+- Returns the PDF object for streaming or downloading
+
+## Access Control
+
+Strict access control ensures prescription privacy (PrescriptionController.php:14-42):
+
+```php
+private function authorizeAccess(Prescription $prescription): void
+{
+    $user = request()->user();
+
+    // Admin can view all
+    if ($user->hasRole('admin')) {
+        return;
+    }
+
+    // Doctor: only their own prescriptions
+    if ($user->hasRole('doctor') && $prescription->consultation->doctor_id === $user->id) {
+        return;
+    }
+
+    // Patient: only their own prescriptions
+    if ($user->hasRole('patient')) {
+        $patient = Patient::where('user_id', $user->id)->first();
+        if ($patient && $prescription->patient_id === $patient->id) {
+            return;
+        }
+    }
+
+    // Receptionist can view prescriptions (for delivery)
+    if ($user->hasRole('receptionist')) {
+        return;
+    }
+
+    abort(403, 'No tienes acceso a esta receta.');
+}
+```
+
+<AccordionGroup>
+  <Accordion title="Admin">
+    - View and download all prescriptions
+    - Full access to preview and PDF generation
+  </Accordion>
+  
+  <Accordion title="Doctor">
+    - View and download only prescriptions they created
+    - Access through consultation link
+  </Accordion>
+  
+  <Accordion title="Patient">
+    - View and download only their own prescriptions
+    - Access through patient portal
+  </Accordion>
+  
+  <Accordion title="Receptionist">
+    - View and download all prescriptions
+    - Needed for printing and delivery to patients
+  </Accordion>
+</AccordionGroup>
+
+## Patient Portal Access
+
+Patients can view their prescriptions through the dedicated portal:
+
+**Route:** `patient.prescriptions` → `PatientPortalController@prescriptions`  
+**Endpoint:** `GET /my-prescriptions`
+
+```php
+// Patient prescription list (PatientPortalController.php:168-186)
+$prescriptions = Prescription::with(['consultation.doctor'])
+    ->where('patient_id', $patient->id)
+    ->latest()
+    ->paginate(10);
+```
+
+Patients can:
+- View list of all their prescriptions
+- Preview prescriptions in browser
+- Download prescription PDFs
+- See which doctor prescribed each medication
+
+## Relationships
+
+```php
+// Prescription.php relationships
+
+// Belongs to Consultation
+public function consultation(): BelongsTo
+{
+    return $this->belongsTo(Consultation::class);
+}
+
+// Belongs to Patient
+public function patient(): BelongsTo
+{
+    return $this->belongsTo(Patient::class);
+}
+
+// Belongs to Doctor
+public function doctor(): BelongsTo
+{
+    return $this->belongsTo(User::class, 'doctor_id');
+}
+```
+
+## Database Schema
+
+```sql
+CREATE TABLE prescriptions (
+    id BIGINT PRIMARY KEY,
+    consultation_id BIGINT NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
+    patient_id BIGINT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    doctor_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    items JSON NOT NULL,
+    general_instructions TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+```
+
+## UI Workflow
+
+<Steps>
+  <Step title="Create During Consultation">
+    Add prescription items while documenting consultation
+  </Step>
+  <Step title="Auto-Generate">
+    Prescription is automatically created and linked
+  </Step>
+  <Step title="Access from Patient Record">
+    View prescription from patient profile or consultation details
+  </Step>
+  <Step title="Preview or Download">
+    Click preview to view in browser or download as PDF
+  </Step>
+  <Step title="Patient Access">
+    Patient can view and download from their portal
+  </Step>
+</Steps>
+
+## Example Usage
+
+### Creating a Multi-Item Prescription
+
+```php
+// During consultation creation
+[
+    'prescription_items' => [
+        [
+            'medication' => 'Enalapril 10mg',
+            'dosage' => '1 tableta',
+            'frequency' => 'Una vez al día en la mañana',
+            'duration' => 'Uso continuo',
+        ],
+        [
+            'medication' => 'Metformina 850mg',
+            'dosage' => '1 tableta',
+            'frequency' => 'Dos veces al día con comidas',
+            'duration' => 'Uso continuo',
+        ],
+        [
+            'medication' => 'Aspirina 100mg',
+            'dosage' => '1 tableta',
+            'frequency' => 'Una vez al día',
+            'duration' => 'Uso continuo',
+        ],
+    ],
+    'prescription_instructions' => 'Control de presión arterial semanal. Seguimiento en 1 mes.',
+]
+```
+
+### Accessing Prescription Data
+
+```php
+// Load prescription with relationships
+$prescription = Prescription::with(['patient', 'doctor', 'consultation'])->find($id);
+
+// Access medication items
+foreach ($prescription->items as $item) {
+    echo $item['medication']; // "Ibuprofeno 400mg"
+    echo $item['dosage'];     // "1 tableta"
+    echo $item['frequency'];  // "Cada 8 horas"
+    echo $item['duration'];   // "5 días"
+}
+
+// General instructions
+echo $prescription->general_instructions;
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Complete Information" icon="clipboard-check">
+    Always include medication, dosage, and frequency for patient safety
+  </Card>
+  
+  <Card title="Clear Instructions" icon="message">
+    Use plain language that patients can understand
+  </Card>
+  
+  <Card title="Duration Specified" icon="calendar-days">
+    Always specify how long to take the medication
+  </Card>
+  
+  <Card title="General Instructions" icon="circle-info">
+    Add important warnings or follow-up instructions
+  </Card>
+</CardGroup>
+
+<Warning>
+Prescriptions use soft deletes to maintain medical history. Never permanently delete prescriptions for audit and legal compliance.
+</Warning>

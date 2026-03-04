@@ -1,0 +1,536 @@
+---
+title: Patient Portal Guide
+description: Complete guide for patients using the Nguhöe EHR patient portal
+---
+
+# Patient Portal Guide
+
+The patient portal gives you secure access to your medical records, appointments, and prescriptions. You can book appointments online, view your consultation history, and access your prescriptions anytime.
+
+## Getting Started
+
+### Self-Registration Process
+
+<Steps>
+  <Step title="Access Registration Page">
+    Navigate to the Nguhöe EHR homepage
+    
+    Click the **Register** button in the top right corner
+    
+    **Screenshot: Homepage with Register button highlighted**
+  </Step>
+  
+  <Step title="Complete Registration Form">
+    Fill in your account details:
+    
+    - **Name**: Your full legal name
+    - **Email Address**: Must be unique (this will be your login username)
+    - **Password**: Minimum 8 characters
+    - **Password Confirmation**: Re-enter your password
+    
+    **Screenshot: Patient registration form**
+  </Step>
+  
+  <Step title="Verify Email">
+    After registering:
+    - Check your email inbox
+    - Click the verification link sent to your email
+    - This confirms your email address and activates your account
+    
+    <Info>
+    If you don't see the email, check your spam folder
+    </Info>
+  </Step>
+  
+  <Step title="Complete Your Profile">
+    <Warning>
+    Important: You must have a patient record created by clinic staff before you can use most portal features.
+    </Warning>
+    
+    After email verification:
+    - Contact the clinic to have staff create your patient record
+    - Staff will link your account to your medical records
+    - Once linked, you'll have full access to portal features
+  </Step>
+</Steps>
+
+### Logging In
+
+<Steps>
+  <Step title="Go to Login Page">
+    Click **Login** on the homepage
+  </Step>
+  
+  <Step title="Enter Credentials">
+    - **Email**: Your registered email address
+    - **Password**: Your account password
+  </Step>
+  
+  <Step title="Access Portal Dashboard">
+    After successful login, you'll see your patient dashboard
+  </Step>
+</Steps>
+
+---
+
+## Patient Dashboard
+
+Your dashboard at `/dashboard` shows:
+- Upcoming appointments
+- Recent prescriptions
+- Quick action buttons
+- Important notifications
+
+**Screenshot: Patient dashboard with overview sections**
+
+---
+
+## Booking Appointments Online
+
+Book appointments directly through the patient portal without calling the clinic.
+
+### Checking Doctor Availability
+
+<Steps>
+  <Step title="Navigate to Book Appointment">
+    Click **Book Appointment** from the main menu or dashboard
+    
+    This takes you to `/book-appointment`
+  </Step>
+  
+  <Step title="Select a Doctor">
+    Choose which doctor you want to see from the dropdown list
+    
+    <Info>
+    Each doctor has their own availability schedule configured in the system
+    </Info>
+    
+    **Screenshot: Book appointment page with doctor selection**
+  </Step>
+  
+  <Step title="Choose a Date">
+    Select the date you want to visit using the date picker
+    
+    **Screenshot: Calendar date picker interface**
+  </Step>
+  
+  <Step title="View Available Time Slots">
+    After selecting a doctor and date, the system displays:
+    
+    - **Available slots**: Time slots shown in green that you can book
+    - **Occupied slots**: Grayed out times that are already booked
+    - **Past times**: Unavailable if earlier than current time
+    
+    Time slots are typically in 30-minute intervals (e.g., 9:00, 9:30, 10:00)
+    
+    <Note>
+    If no slots appear, the doctor may not be working on that day. Try a different date or doctor.
+    </Note>
+    
+    **Screenshot: Available time slots display with green and gray indicators**
+  </Step>
+</Steps>
+
+### Completing Your Booking
+
+<Steps>
+  <Step title="Select Time Slot">
+    Click on an available (green) time slot
+  </Step>
+  
+  <Step title="Add Appointment Details">
+    - **Reason for Visit**: Brief description of why you need to see the doctor
+      - Examples: "Annual checkup", "Flu symptoms", "Follow-up visit"
+    
+    <Tip>
+    Providing a clear reason helps the clinic prepare for your visit
+    </Tip>
+  </Step>
+  
+  <Step title="Confirm Booking">
+    Review your appointment details:
+    - Doctor name
+    - Date and time
+    - Reason for visit
+    
+    Click **Book Appointment** to confirm
+  </Step>
+  
+  <Step title="Booking Confirmation">
+    You'll see a success message confirming your appointment
+    
+    The appointment is immediately added to your schedule and the doctor's calendar.
+  </Step>
+</Steps>
+
+### Appointment Booking Tips
+
+<CardGroup cols={2}>
+  <Card title="Book Early" icon="calendar-plus">
+    Popular time slots fill up quickly. Book as far in advance as possible.
+  </Card>
+  
+  <Card title="Check Multiple Doctors" icon="user-doctor">
+    If your preferred doctor is fully booked, other doctors may have availability.
+  </Card>
+  
+  <Card title="Morning Appointments" icon="sun">
+    Morning slots (9:00-11:00) tend to have shorter wait times.
+  </Card>
+  
+  <Card title="Clear Reasons" icon="clipboard-list">
+    Provide specific reasons for your visit to help the doctor prepare.
+  </Card>
+</CardGroup>
+
+---
+
+## Viewing Your Appointments
+
+### Appointment History
+
+<Steps>
+  <Step title="Navigate to My Appointments">
+    Click **My Appointments** in the main navigation menu
+    
+    This takes you to `/my-appointments`
+  </Step>
+  
+  <Step title="View Appointment List">
+    You'll see all your appointments listed with:
+    
+    - **Doctor Name**: Who you're seeing
+    - **Date and Time**: When your appointment is scheduled
+    - **Status**: Current appointment status
+    - **Reason**: Why you're visiting
+    
+    Appointments are sorted with most recent first.
+    
+    **Screenshot: My Appointments page showing appointment list**
+  </Step>
+  
+  <Step title="Filter Appointments">
+    Use the pagination to view older appointments
+    
+    Appointments are organized by:
+    - Upcoming appointments (at the top)
+    - Past appointments (below)
+  </Step>
+</Steps>
+
+### Appointment Status Meanings
+
+Your appointments will show different statuses:
+
+- **Scheduled**: Your booking is confirmed and in the system
+- **Confirmed**: The clinic has verified your appointment (may call you)
+- **Completed**: You attended and saw the doctor
+- **Cancelled**: The appointment was cancelled
+- **No Show**: You missed the scheduled appointment
+
+<Warning>
+If you need to cancel an appointment, please contact the clinic directly. You cannot cancel appointments through the portal.
+</Warning>
+
+---
+
+## Accessing Your Prescriptions
+
+### Viewing Prescriptions
+
+<Steps>
+  <Step title="Navigate to My Prescriptions">
+    Click **My Prescriptions** in the main navigation menu
+    
+    This takes you to `/my-prescriptions`
+  </Step>
+  
+  <Step title="View Prescription List">
+    You'll see all prescriptions issued to you, showing:
+    
+    - **Issue Date**: When the prescription was created
+    - **Doctor**: Which doctor prescribed the medication
+    - **Number of Medications**: How many items are on the prescription
+    - **Consultation**: Link to the related doctor visit
+    
+    Prescriptions are sorted with newest first.
+    
+    **Screenshot: My Prescriptions page with list of prescriptions**
+  </Step>
+  
+  <Step title="View Prescription Details">
+    Click on a prescription to see full details:
+    
+    For each medication:
+    - Medication name and strength
+    - Dosage instructions
+    - Frequency (how often to take it)
+    - Duration (how long to take it)
+    - Special instructions or warnings
+    
+    **Screenshot: Prescription detail view showing medications**
+  </Step>
+</Steps>
+
+### Downloading Prescriptions
+
+<Steps>
+  <Step title="Open Prescription">
+    From your prescriptions list, find the prescription you need
+  </Step>
+  
+  <Step title="Preview or Download">
+    - Click **Preview** to view the formatted prescription in your browser
+    - Click **Download** to save a PDF copy to your device
+    
+    The downloaded prescription includes:
+    - Your personal information
+    - Doctor's information
+    - Issue date
+    - All prescribed medications with complete instructions
+    - Doctor's signature line
+  </Step>
+  
+  <Step title="Use at Pharmacy">
+    Present the downloaded prescription (digital or printed) at any pharmacy
+  </Step>
+</Steps>
+
+<Tip>
+Save important prescriptions to your device or print them for your records.
+</Tip>
+
+---
+
+## Viewing Your Medical Records
+
+Access your complete medical history through the portal.
+
+### Personal Medical Information
+
+From your dashboard, you can view:
+- Personal and contact information
+- Medical antecedents (past conditions)
+- Known allergies
+- Chronic diseases
+- Current medications
+
+### Consultation History
+
+<Steps>
+  <Step title="Access Records">
+    Navigate to your patient profile section
+  </Step>
+  
+  <Step title="View Past Consultations">
+    See a list of all your doctor visits showing:
+    - Date of visit
+    - Doctor who saw you
+    - Reason for visit
+    - Diagnosis
+  </Step>
+  
+  <Step title="Review Consultation Details">
+    Click on any consultation to view:
+    - Vital signs recorded during visit
+    - Doctor's clinical findings
+    - Diagnosis and treatment plan
+    - Associated prescription (if issued)
+  </Step>
+</Steps>
+
+<Note>
+Some detailed clinical notes may only be visible to your doctors for privacy and medical reasons.
+</Note>
+
+---
+
+## Account Security
+
+### Changing Your Password
+
+<Steps>
+  <Step title="Access Settings">
+    Click on your profile icon in the top right
+    
+    Select **Settings** or **Profile**
+  </Step>
+  
+  <Step title="Update Password">
+    Navigate to the password section
+    
+    Enter:
+    - Current password
+    - New password
+    - Confirm new password
+  </Step>
+  
+  <Step title="Save Changes">
+    Click **Update Password**
+    
+    You'll be required to log in again with your new password.
+  </Step>
+</Steps>
+
+### Enabling Two-Factor Authentication
+
+Add an extra layer of security to your account:
+
+<Steps>
+  <Step title="Navigate to Security Settings">
+    Go to Settings > Two-Factor Authentication
+  </Step>
+  
+  <Step title="Enable 2FA">
+    Click **Enable Two-Factor Authentication**
+  </Step>
+  
+  <Step title="Scan QR Code">
+    Use an authenticator app on your phone:
+    - Google Authenticator
+    - Microsoft Authenticator
+    - Authy
+    
+    Scan the QR code displayed
+  </Step>
+  
+  <Step title="Verify Setup">
+    Enter the 6-digit code from your authenticator app
+  </Step>
+  
+  <Step title="Save Recovery Codes">
+    <Warning>
+    Save the recovery codes in a safe place! You'll need them if you lose access to your authenticator app.
+    </Warning>
+  </Step>
+</Steps>
+
+---
+
+## Complete Workflow: Booking Your First Appointment
+
+Here's a complete walkthrough for new patients:
+
+<Steps>
+  <Step title="Create Account">
+    Register on the website with your email and password
+  </Step>
+  
+  <Step title="Verify Email">
+    Click the verification link sent to your email
+  </Step>
+  
+  <Step title="Contact Clinic">
+    Call or visit the clinic to:
+    - Provide your personal information
+    - Complete medical history
+    - Have staff link your portal account to your medical record
+  </Step>
+  
+  <Step title="Log Into Portal">
+    Access your account at the clinic's website
+  </Step>
+  
+  <Step title="Book Appointment">
+    - Go to **Book Appointment**
+    - Select a doctor
+    - Choose a date
+    - Pick an available time slot
+    - Enter reason for visit
+    - Confirm booking
+  </Step>
+  
+  <Step title="Receive Confirmation">
+    Your appointment is now scheduled!
+    
+    The clinic may call you to confirm the day before.
+  </Step>
+  
+  <Step title="Attend Appointment">
+    - Arrive 10-15 minutes early
+    - Check in with reception
+    - See your doctor
+  </Step>
+  
+  <Step title="After Your Visit">
+    - Your consultation is automatically added to your records
+    - Any prescriptions are immediately available in **My Prescriptions**
+    - Download or print prescriptions as needed
+  </Step>
+</Steps>
+
+---
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Can I book appointments for family members?">
+    Each person needs their own account. However, you can contact the clinic to schedule appointments for dependents by phone.
+  </Accordion>
+  
+  <Accordion title="How do I cancel an appointment?">
+    Please call the clinic directly to cancel appointments. Online cancellation is not currently available through the portal.
+  </Accordion>
+  
+  <Accordion title="Why can't I see available appointment slots?">
+    This usually means the doctor is not working on that date or all slots are booked. Try:
+    - Selecting a different date
+    - Choosing a different doctor
+    - Contacting the clinic for assistance
+  </Accordion>
+  
+  <Accordion title="I forgot my password. What should I do?">
+    On the login page, click **Forgot Password**. Enter your email address and you'll receive a password reset link.
+  </Accordion>
+  
+  <Accordion title="Can I view prescriptions from other doctors?">
+    Yes! All prescriptions issued to you appear in **My Prescriptions**, regardless of which doctor prescribed them.
+  </Accordion>
+  
+  <Accordion title="How far in advance can I book appointments?">
+    This depends on the doctor's availability schedule set by the clinic. Generally, you can book several weeks in advance.
+  </Accordion>
+  
+  <Accordion title="Is my medical information secure?">
+    Yes. The portal uses industry-standard encryption and security measures to protect your data. Only you and authorized healthcare providers can access your information.
+  </Accordion>
+  
+  <Accordion title="Why is my account showing no appointments or prescriptions?">
+    Your clinic staff needs to create your patient record and link it to your portal account. Contact the clinic to complete this step.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Technical Support" icon="headset">
+    For portal issues, contact the clinic's IT support or help desk
+  </Card>
+  
+  <Card title="Appointment Questions" icon="calendar">
+    Call the clinic reception for appointment-related inquiries
+  </Card>
+  
+  <Card title="Medical Questions" icon="stethoscope">
+    Contact your doctor's office directly for medical concerns
+  </Card>
+  
+  <Card title="Account Issues" icon="user">
+    Email the clinic's patient services for account access problems
+  </Card>
+</CardGroup>
+
+---
+
+## Tips for Using the Patient Portal
+
+- **Keep Information Updated**: Notify the clinic if your contact details change
+- **Check Regularly**: Log in periodically to review appointments and new prescriptions
+- **Download Prescriptions**: Save digital copies of prescriptions for your records
+- **Book in Advance**: Schedule appointments early to get your preferred times
+- **Use Strong Passwords**: Protect your medical information with a secure password
+- **Enable 2FA**: Add two-factor authentication for additional account security
+
+Welcome to the Nguhöe EHR patient portal! We're here to make managing your healthcare easier and more convenient.

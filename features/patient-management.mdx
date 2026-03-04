@@ -1,0 +1,285 @@
+---
+title: Patient Management
+description: Comprehensive patient record management with medical history, attachments, and search capabilities
+icon: user
+---
+
+## Overview
+
+The Patient Management module provides a complete CRUD system for managing patient records in Nguhöe EHR. It includes demographic information, medical history, attachments, and powerful search capabilities.
+
+<Note>
+Patient management is accessible to Admin, Doctor, and Receptionist roles. Only admins can delete patient records.
+</Note>
+
+## Patient Data Model
+
+### Personal Information
+
+Patients are managed through the `Patient` model with the following core fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `full_name` | string | Patient's complete name |
+| `document_id` | string (unique) | National ID/DNI/CURP |
+| `birth_date` | date | Date of birth |
+| `gender` | enum | `male`, `female`, or `other` |
+| `phone` | string | Contact phone number |
+| `email` | string | Email address |
+| `address` | text | Physical address |
+
+### Medical History
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `medical_antecedents` | text | Previous medical conditions and history |
+| `allergies` | text | Known allergies |
+| `chronic_diseases` | text | Ongoing chronic conditions |
+| `current_medication` | text | Current medications being taken |
+| `notes` | text | Additional clinical notes |
+
+## Key Features
+
+### CRUD Operations
+
+#### Creating a Patient
+
+<Steps>
+  <Step title="Navigate to Patients">
+    Access the patients list from the main navigation
+  </Step>
+  <Step title="Click Create">
+    Click the "Create Patient" button
+  </Step>
+  <Step title="Fill Patient Information">
+    Complete the form with personal and medical information
+  </Step>
+  <Step title="Save">
+    Submit to create the patient record
+  </Step>
+</Steps>
+
+**Route:** `patients.create` → `PatientController@create`  
+**Form Request:** `StorePatientRequest`  
+**Action:** `CreatePatientAction`
+
+```php
+// Example patient creation
+$patient = Patient::create([
+    'full_name' => 'Juan Pérez',
+    'document_id' => 'DNI12345678',
+    'birth_date' => '1985-03-15',
+    'gender' => 'male',
+    'phone' => '+1234567890',
+    'email' => 'juan.perez@example.com',
+    'address' => 'Calle Principal 123',
+    'allergies' => 'Penicillin',
+    'chronic_diseases' => 'Diabetes Type 2',
+]);
+```
+
+#### Viewing Patient Details
+
+The patient detail view (routes/web.php:27) loads comprehensive information including:
+
+- All patient demographic and medical data
+- Attached files and documents
+- Consultation history with doctor information
+
+```php
+// Patient relationships loaded on show
+$patient->load([
+    'attachments', 
+    'consultations' => function($q) {
+        $q->with('doctor')->latest();
+    }
+]);
+```
+
+**Route:** `patients.show` → `PatientController@show`
+
+#### Updating Patient Records
+
+Patient information can be updated through the edit form:
+
+**Route:** `patients.update` → `PatientController@update`  
+**Form Request:** `UpdatePatientRequest`  
+**Action:** `UpdatePatientAction`
+
+#### Deleting Patients (Admin Only)
+
+Patient records use **soft deletes** to maintain data integrity:
+
+```php
+// Only admins can delete (PatientController.php:93)
+if (!request()->user()->hasRole('admin')) {
+    abort(403, 'Solo el administrador puede eliminar pacientes.');
+}
+
+$patient->delete(); // Soft delete
+```
+
+<Warning>
+Deleted patients are soft-deleted and can be restored. This preserves historical consultation and prescription data.
+</Warning>
+
+### Search and Filtering
+
+The patient index page (routes/web.php:14-32) supports multi-field search:
+
+```php
+// Search across multiple fields
+$query->where(function ($q) use ($search) {
+    $q->where('full_name', 'like', "%{$search}%")
+      ->orWhere('document_id', 'like', "%{$search}%")
+      ->orWhere('phone', 'like', "%{$search}%")
+      ->orWhere('email', 'like', "%{$search}%");
+});
+```
+
+Search terms match against:
+- Full name
+- Document ID (national ID)
+- Phone number
+- Email address
+
+### Attachments System
+
+Patients can have multiple file attachments using a polymorphic relationship:
+
+```php
+// Patient.php:36-39
+public function attachments(): MorphMany
+{
+    return $this->morphMany(Attachment::class, 'attachable');
+}
+```
+
+#### Uploading Attachments
+
+**Route:** `patients.attachments.store` → `AttachmentController@storePatient`  
+**Endpoint:** `POST /patients/{patient}/attachments`
+
+Attachments can include:
+- Lab results
+- Medical imaging
+- Insurance documents
+- ID copies
+- Previous medical records
+
+#### Deleting Attachments
+
+**Route:** `attachments.destroy` → `AttachmentController@destroy`  
+**Endpoint:** `DELETE /attachments/{attachment}`
+
+## Relationships
+
+The Patient model has the following relationships:
+
+```php
+// One-to-Many: Consultations
+public function consultations(): HasMany
+{
+    return $this->hasMany(Consultation::class);
+}
+
+// One-to-Many: Prescriptions
+public function prescriptions(): HasMany
+{
+    return $this->hasMany(Prescription::class);
+}
+
+// One-to-Many: Payments
+public function payments(): HasMany
+{
+    return $this->hasMany(Payment::class);
+}
+
+// Polymorphic: Attachments
+public function attachments(): MorphMany
+{
+    return $this->morphMany(Attachment::class, 'attachable');
+}
+```
+
+## UI Workflow
+
+<Steps>
+  <Step title="List View">
+    View all patients in a paginated table with search functionality
+  </Step>
+  <Step title="Search">
+    Use the search bar to find patients by name, ID, phone, or email
+  </Step>
+  <Step title="Patient Details">
+    Click a patient to view complete medical history and consultations
+  </Step>
+  <Step title="Edit or Manage">
+    Update patient information or manage attachments from the detail view
+  </Step>
+</Steps>
+
+## Access Control
+
+<AccordionGroup>
+  <Accordion title="Admin">
+    - Full CRUD access
+    - Can delete patient records
+    - View all patients
+  </Accordion>
+  
+  <Accordion title="Doctor">
+    - Create, read, and update patients
+    - Cannot delete patients
+    - View all patients
+  </Accordion>
+  
+  <Accordion title="Receptionist">
+    - Create, read, and update patients
+    - Cannot delete patients
+    - View all patients
+  </Accordion>
+</AccordionGroup>
+
+## Database Schema
+
+```sql
+CREATE TABLE patients (
+    id BIGINT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    document_id VARCHAR(255) UNIQUE,
+    birth_date DATE,
+    gender ENUM('male', 'female', 'other'),
+    phone VARCHAR(255),
+    email VARCHAR(255),
+    address TEXT,
+    medical_antecedents TEXT,
+    allergies TEXT,
+    chronic_diseases TEXT,
+    current_medication TEXT,
+    notes TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Complete Medical History" icon="notes-medical">
+    Always fill out allergies and chronic diseases to prevent medical errors
+  </Card>
+  
+  <Card title="Verify Contact Info" icon="phone">
+    Ensure phone and email are current for appointment reminders
+  </Card>
+  
+  <Card title="Attach Documents" icon="paperclip">
+    Upload important medical documents for easy reference
+  </Card>
+  
+  <Card title="Regular Updates" icon="clock-rotate-left">
+    Keep medical information current as patient conditions change
+  </Card>
+</CardGroup>

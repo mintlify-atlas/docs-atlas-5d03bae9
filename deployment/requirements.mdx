@@ -1,0 +1,193 @@
+---
+title: 'System Requirements'
+description: 'Hardware and software requirements for deploying Nguhöe EHR'
+---
+
+## Server Requirements
+
+### PHP Requirements
+
+Nguhöe EHR requires **PHP 8.2 or higher**. Ensure your server has the following PHP extensions installed:
+
+- BCMath PHP Extension
+- Ctype PHP Extension
+- cURL PHP Extension
+- DOM PHP Extension
+- Fileinfo PHP Extension
+- Filter PHP Extension
+- Hash PHP Extension
+- Mbstring PHP Extension
+- OpenSSL PHP Extension
+- PCRE PHP Extension
+- PDO PHP Extension
+- Session PHP Extension
+- Tokenizer PHP Extension
+- XML PHP Extension
+- GD or Imagick PHP Extension (for image processing via Intervention Image)
+- Zip PHP Extension (for backup archives)
+
+### Node.js Requirements
+
+For building frontend assets:
+
+- **Node.js**: 18.x or higher recommended
+- **npm**: 9.x or higher (comes with Node.js)
+
+Alternatively, you can use **Yarn** or **pnpm** as your package manager.
+
+### Database Requirements
+
+Nguhöe EHR supports the following database systems:
+
+- **SQLite** 3.35.0 or higher (suitable for small deployments)
+- **MySQL** 8.0 or higher
+- **MariaDB** 10.6 or higher
+- **PostgreSQL** 13.0 or higher
+
+For production environments, **MySQL**, **MariaDB**, or **PostgreSQL** are recommended over SQLite.
+
+### Web Server Requirements
+
+Choose one of the following web servers:
+
+- **Nginx** 1.18 or higher (recommended)
+- **Apache** 2.4 or higher with mod_rewrite enabled
+
+### Additional Software
+
+- **Composer** 2.5 or higher (PHP dependency manager)
+- **Git** (for deployment and updates)
+- **Supervisor** (for queue worker management)
+
+## Hardware Recommendations
+
+### Minimum Requirements
+
+- **CPU**: 2 cores
+- **RAM**: 2 GB
+- **Disk Space**: 10 GB
+- **Network**: 100 Mbps
+
+### Recommended for Production
+
+- **CPU**: 4+ cores
+- **RAM**: 4+ GB (8 GB for medium to large deployments)
+- **Disk Space**: 50+ GB SSD (depends on patient records and document storage)
+- **Network**: 1 Gbps
+
+### Storage Considerations
+
+- **Application files**: ~500 MB
+- **Database**: Varies based on patient volume (estimate 10-50 MB per 1000 patients)
+- **Uploaded files** (patient documents, images): Plan according to expected usage
+- **Backups**: Reserve at least 2x the database and file storage size
+- **Logs**: 1-5 GB depending on retention policy
+
+## PHP Configuration
+
+### Required php.ini Settings
+
+```ini
+memory_limit = 256M
+upload_max_filesize = 64M
+post_max_size = 64M
+max_execution_time = 300
+max_input_time = 300
+
+; For production performance
+opcache.enable = 1
+opcache.memory_consumption = 128
+opcache.interned_strings_buffer = 8
+opcache.max_accelerated_files = 10000
+opcache.revalidate_freq = 60
+```
+
+### Recommended Extensions for Production
+
+- **OPcache**: For PHP bytecode caching (significant performance improvement)
+- **APCu**: For application-level caching
+- **Redis**: For session and cache storage (requires phpredis extension)
+
+## Package Dependencies
+
+### Core Laravel Packages
+
+The following packages are automatically installed via Composer:
+
+- **laravel/framework** ^12.0
+- **laravel/fortify** ^1.30 (authentication)
+- **inertiajs/inertia-laravel** ^2.0 (frontend framework)
+
+### Feature Packages
+
+- **spatie/laravel-backup** ^10.0 (automated backups)
+- **spatie/laravel-permission** ^7.2 (role and permission management)
+- **barryvdh/laravel-dompdf** ^3.1 (PDF generation)
+- **intervention/image** ^3.11 (image processing)
+
+### Frontend Dependencies
+
+The following are managed via npm and installed during build:
+
+- **React** 19.2.0
+- **@inertiajs/react** ^2.3.7
+- **Tailwind CSS** ^4.0.0
+- **Vite** ^7.0.4 (build tool)
+
+## Security Requirements
+
+- **SSL/TLS Certificate**: Required for HTTPS (Let's Encrypt recommended)
+- **Firewall**: Configure to allow only necessary ports (80, 443, 22)
+- **File Permissions**: Web server should not have write access to application code
+- **Environment File**: `.env` must be protected and not web-accessible
+
+## Network Requirements
+
+### Required Outbound Access
+
+- **Composer repositories**: packagist.org (HTTPS)
+- **npm registry**: registry.npmjs.org (HTTPS)
+- **Email delivery**: SMTP server access (if using email notifications)
+- **Backup destinations**: S3 or other cloud storage (if configured)
+
+### Firewall Ports
+
+- **80/TCP**: HTTP (redirect to HTTPS)
+- **443/TCP**: HTTPS
+- **22/TCP**: SSH (for deployment and administration)
+- **3306/TCP**: MySQL (only if database is on separate server)
+- **5432/TCP**: PostgreSQL (only if database is on separate server)
+
+## Development vs Production
+
+### Development-Only Requirements
+
+- **Laravel Pail** (log viewer)
+- **Laravel Pint** (code formatter)
+- **Pest** (testing framework)
+- **Node.js dev server** (Vite)
+
+These are NOT required in production as assets are pre-built.
+
+### Production-Only Requirements
+
+- **Process manager** (Supervisor for queue workers)
+- **SSL certificate** (required for HTTPS)
+- **Monitoring tools** (optional but recommended)
+- **Backup storage** (local or cloud)
+
+## Verification Checklist
+
+Before proceeding with installation, verify:
+
+- [ ] PHP version 8.2 or higher installed
+- [ ] All required PHP extensions enabled
+- [ ] Composer 2.5 or higher installed
+- [ ] Node.js 18.x or higher installed
+- [ ] Database server installed and accessible
+- [ ] Web server installed and configured
+- [ ] Supervisor installed (for queue workers)
+- [ ] SSL certificate obtained
+- [ ] Firewall configured
+- [ ] Sufficient disk space available
+- [ ] Backup storage configured

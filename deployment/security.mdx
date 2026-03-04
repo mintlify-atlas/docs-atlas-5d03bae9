@@ -1,0 +1,572 @@
+---
+title: 'Security Configuration'
+description: 'Security best practices and hardening guidelines for Nguhöe EHR'
+---
+
+## Environment File Security
+
+### Protecting the .env File
+
+The `.env` file contains sensitive configuration including database credentials, API keys, and encryption keys.
+
+**Critical Actions:**
+
+```bash
+# Set restrictive permissions
+chmod 600 /var/www/nguhoe/.env
+chown www-data:www-data /var/www/nguhoe/.env
+
+# Verify it's not web-accessible
+curl https://your-domain.com/.env
+# Should return 403 Forbidden or 404 Not Found
+```
+
+### Environment Variables Checklist
+
+Ensure these are properly configured in production:
+
+```bash
+# MUST be 'production'
+APP_ENV=production
+
+# MUST be false in production
+APP_DEBUG=false
+
+# Generate with: php artisan key:generate
+APP_KEY=base64:your-generated-key-here
+
+# MUST use https://
+APP_URL=https://your-domain.com
+
+# Strong database password
+DB_PASSWORD=complex-random-password-here
+
+# Secure session configuration
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=strict
+```
+
+### Generating Secure Keys
+
+```bash
+# Application encryption key
+php artisan key:generate
+
+# Generate secure random passwords
+openssl rand -base64 32
+```
+
+## Database Security
+
+### Database User Permissions
+
+Create a dedicated database user with minimal privileges:
+
+```sql
+-- For MySQL/MariaDB
+CREATE DATABASE nguhoe CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'nguhoe_user'@'localhost' IDENTIFIED BY 'strong-password-here';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, INDEX, ALTER, DROP, LOCK TABLES 
+  ON nguhoe.* TO 'nguhoe_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+```sql
+-- For PostgreSQL
+CREATE DATABASE nguhoe;
+CREATE USER nguhoe_user WITH ENCRYPTED PASSWORD 'strong-password-here';
+GRANT ALL PRIVILEGES ON DATABASE nguhoe TO nguhoe_user;
+```
+
+### Database Connection Security
+
+**If database is on a separate server:**
+
+- Use SSL/TLS for database connections
+- Configure firewall to allow only application server IP
+- Use strong authentication (certificates when possible)
+
+```bash
+# In .env for SSL database connection
+DB_SSLMODE=require
+DB_SSLCERT=/path/to/client-cert.pem
+DB_SSLKEY=/path/to/client-key.pem
+DB_SSLROOTCERT=/path/to/ca-cert.pem
+```
+
+### Protecting Against SQL Injection
+
+Laravel's Eloquent ORM and Query Builder provide automatic protection:
+
+**Safe (parameterized queries):**
+
+```php
+// Eloquent - automatically safe
+User::where('email', $email)->first();
+
+// Query Builder with bindings - safe
+DB::table('users')->where('email', '=', $email)->get();
+
+// Raw query with bindings - safe
+DB::select('SELECT * FROM users WHERE email = ?', [$email]);
+```
+
+**Unsafe (avoid):**
+
+```php
+// NEVER do this - vulnerable to SQL injection
+DB::select("SELECT * FROM users WHERE email = '$email'");
+```
+
+## HTTPS/SSL Enforcement
+
+### Force HTTPS in Application
+
+Laravel automatically enforces HTTPS when `APP_URL` uses `https://`.
+
+**Additional enforcement in `app/Providers/AppServiceProvider.php`:**
+
+```php
+use Illuminate\Support\Facades\URL;
+
+public function boot(): void
+{
+    if ($this->app->environment('production')) {
+        URL::forceScheme('https');
+    }
+}
+```
+
+### HTTP Strict Transport Security (HSTS)
+
+Already configured in the Nginx example, but verify:
+
+```nginx
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+This forces browsers to only access your site via HTTPS for 1 year.
+
+### SSL Certificate Best Practices
+
+- Use **TLS 1.2** or **TLS 1.3** only (disable older versions)
+- Keep certificates up to date (Let's Encrypt auto-renews every 60 days)
+- Use strong cipher suites
+- Enable OCSP stapling for performance
+
+```nginx
+# Enhanced SSL configuration
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+ssl_prefer_server_ciphers on;
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 10m;
+ssl_stapling on;
+ssl_stapling_verify on;
+```
+
+## CSRF Protection
+
+Laravel provides automatic CSRF protection for all POST, PUT, PATCH, and DELETE requests.
+
+### How It Works
+
+- Laravel generates a unique token for each user session
+- The token must be included in forms and AJAX requests
+- Requests without valid tokens are rejected
+
+### Implementation with Inertia
+
+Inertia automatically handles CSRF tokens. Ensure the middleware is active in `bootstrap/app.php`:
+
+```php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->validateCsrfTokens(except: [
+        // Add routes to exclude from CSRF protection (rare)
+        // 'webhooks/*',
+    ]);
+})
+```
+
+### Manual CSRF Token Usage
+
+For custom forms:
+
+```html
+<form method="POST" action="/submit">
+    @csrf
+    <!-- form fields -->
+</form>
+```
+
+For AJAX requests:
+
+```javascript
+fetch('/api/endpoint', {
+    method: 'POST',
+    headers: {
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+});
+```
+
+## XSS Prevention
+
+Laravel and React provide automatic XSS protection.
+
+### Blade Templates (if used)
+
+Laravel's Blade engine escapes output by default:
+
+```php
+<!-- Safe - automatically escaped -->
+{{ $userInput }}
+
+<!-- Unsafe - renders raw HTML -->
+{!! $trustedHtml !!}
+```
+
+### React Components
+
+React escapes content by default:
+
+```jsx
+{/* Safe - automatically escaped */}
+<div>{userInput}</div>
+
+{/* Unsafe - only use with trusted content */}
+<div dangerouslySetInnerHTML={{__html: trustedHtml}} />
+```
+
+### Content Security Policy (CSP)
+
+Add CSP headers in Nginx:
+
+```nginx
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'" always;
+```
+
+**Note:** Vite in development mode requires `'unsafe-eval'`. For production, you may tighten this.
+
+## File Upload Security
+
+### Validation Rules
+
+Always validate uploaded files:
+
+```php
+use Illuminate\Http\Request;
+
+public function upload(Request $request)
+{
+    $validated = $request->validate([
+        'document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // max 10MB
+        'avatar' => 'nullable|image|max:2048', // max 2MB
+    ]);
+    
+    // Process the validated file
+}
+```
+
+### Secure File Storage
+
+**Store uploaded files outside the public directory:**
+
+```php
+// Store in storage/app/documents (not publicly accessible)
+$path = $request->file('document')->store('documents');
+
+// Retrieve with authorization check
+public function download($id)
+{
+    $document = Document::findOrFail($id);
+    
+    // Authorization check
+    $this->authorize('view', $document);
+    
+    return Storage::download($document->path);
+}
+```
+
+### File Type Validation
+
+Don't rely solely on file extensions. Validate MIME types:
+
+```php
+$request->validate([
+    'file' => 'required|mimes:pdf|mimetypes:application/pdf',
+]);
+```
+
+### Prevent File Execution
+
+Ensure storage directories are not executable:
+
+```nginx
+# In Nginx configuration
+location ^~ /storage/ {
+    location ~ \.(php|phtml|phar)$ {
+        deny all;
+    }
+}
+```
+
+## Authentication Security
+
+### Laravel Fortify Configuration
+
+Nguhöe EHR uses Laravel Fortify for authentication. Key features:
+
+- Password hashing (bcrypt with configurable rounds)
+- Rate limiting on login attempts
+- Email verification
+- Two-factor authentication (2FA)
+- Password confirmation for sensitive actions
+
+### Two-Factor Authentication Setup
+
+Enable 2FA in `config/fortify.php`:
+
+```php
+'features' => [
+    Features::twoFactorAuthentication([
+        'confirm' => true,
+        'confirmPassword' => true,
+    ]),
+],
+```
+
+Users can enable 2FA from their profile settings. They'll use an authenticator app (Google Authenticator, Authy, etc.) to generate time-based codes.
+
+### Password Requirements
+
+Enforce strong passwords in your Form Request validation:
+
+```php
+use Illuminate\Validation\Rules\Password;
+
+'password' => ['required', 'confirmed', Password::min(8)
+    ->mixedCase()
+    ->numbers()
+    ->symbols()
+    ->uncompromised()
+],
+```
+
+### Rate Limiting
+
+Laravel includes rate limiting for authentication routes. Configure in `config/fortify.php`:
+
+```php
+'limiters' => [
+    'login' => 'login',
+    'two-factor' => 'two-factor',
+],
+```
+
+Customize limits in `app/Providers/FortifyServiceProvider.php`:
+
+```php
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+
+RateLimiter::for('login', function (Request $request) {
+    return Limit::perMinute(5)->by($request->email.$request->ip());
+});
+```
+
+## Session Security
+
+### Session Configuration
+
+In `.env`:
+
+```bash
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=strict
+```
+
+**Important settings:**
+
+- `SESSION_SECURE_COOKIE=true`: Cookies only sent over HTTPS
+- `SESSION_SAME_SITE=strict`: Prevents CSRF attacks
+- `SESSION_LIFETIME=120`: Sessions expire after 2 hours of inactivity
+
+### Session Database Storage
+
+Using database sessions (already configured) provides:
+
+- Better scalability for multiple servers
+- Session invalidation on logout
+- Activity tracking
+
+## API Security
+
+If you expose APIs:
+
+### Rate Limiting
+
+Laravel provides built-in API rate limiting:
+
+```php
+// In routes/api.php
+Route::middleware('throttle:60,1')->group(function () {
+    // 60 requests per minute
+});
+```
+
+### API Authentication
+
+For API endpoints, consider using Laravel Sanctum:
+
+```bash
+composer require laravel/sanctum
+php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+php artisan migrate
+```
+
+## Security Headers
+
+All critical security headers are included in the Nginx configuration:
+
+```nginx
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+```
+
+## Permission and Role Management
+
+Nguhöe EHR uses Spatie Laravel Permission for role-based access control (RBAC).
+
+### Best Practices
+
+- Assign users the minimum permissions required
+- Use roles to group permissions logically (e.g., Doctor, Nurse, Admin)
+- Regularly audit user permissions
+- Remove access immediately when employees leave
+
+### Implementation Example
+
+```php
+// Check permission before sensitive actions
+public function update(Request $request, Patient $patient)
+{
+    $this->authorize('update', $patient);
+    // or
+    if (!auth()->user()->can('edit-patients')) {
+        abort(403, 'Unauthorized action.');
+    }
+    
+    // Proceed with update
+}
+```
+
+## Logging and Monitoring
+
+### Security Event Logging
+
+Log important security events:
+
+```php
+use Illuminate\Support\Facades\Log;
+
+// Failed login attempt
+Log::warning('Failed login attempt', [
+    'email' => $request->email,
+    'ip' => $request->ip(),
+]);
+
+// Successful login
+Log::info('User logged in', [
+    'user_id' => $user->id,
+    'ip' => $request->ip(),
+]);
+
+// Unauthorized access attempt
+Log::warning('Unauthorized access attempt', [
+    'user_id' => auth()->id(),
+    'resource' => $resource,
+]);
+```
+
+### Monitor Logs for Suspicious Activity
+
+```bash
+# Watch for failed login attempts
+grep "Failed login" storage/logs/laravel.log
+
+# Monitor for unauthorized access
+grep "Unauthorized" storage/logs/laravel.log
+```
+
+## Security Checklist
+
+Before going live, verify:
+
+- [ ] `APP_DEBUG=false` in production
+- [ ] `APP_ENV=production`
+- [ ] HTTPS enforced with valid SSL certificate
+- [ ] `.env` file permissions set to 600
+- [ ] Database user has minimal required privileges
+- [ ] Strong passwords enforced for user accounts
+- [ ] Two-factor authentication enabled and encouraged
+- [ ] File upload validation in place
+- [ ] CSRF protection active on all forms
+- [ ] Security headers configured in web server
+- [ ] Rate limiting enabled on authentication routes
+- [ ] Session cookies configured securely
+- [ ] Storage directories not publicly accessible
+- [ ] Regular security updates scheduled
+- [ ] Security logging and monitoring active
+- [ ] Backup encryption enabled
+
+## Regular Security Maintenance
+
+### Update Dependencies
+
+```bash
+# Check for security updates
+composer audit
+npm audit
+
+# Update packages
+composer update
+npm update
+```
+
+### Security Scanning
+
+Consider using:
+
+- **Laravel Security Checker**: `composer audit`
+- **npm audit**: `npm audit fix`
+- **OWASP ZAP**: Web application security scanner
+- **Server security audits**: Lynis, OpenVAS
+
+### Stay Informed
+
+- Subscribe to [Laravel Security Advisories](https://github.com/laravel/framework/security/advisories)
+- Monitor PHP security updates
+- Review OWASP Top 10 regularly
+
+## Incident Response
+
+If a security breach is suspected:
+
+1. **Isolate**: Take affected systems offline if necessary
+2. **Investigate**: Review logs to determine extent of breach
+3. **Contain**: Change passwords, revoke tokens, update credentials
+4. **Recover**: Restore from clean backups if needed
+5. **Document**: Record timeline and actions taken
+6. **Improve**: Update security measures to prevent recurrence
+7. **Notify**: Inform affected users if personal data was compromised

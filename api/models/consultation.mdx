@@ -1,0 +1,437 @@
+---
+title: Consultation Model
+description: Consultation model for recording patient visits, vital signs, diagnoses, and treatment plans in the Nguhöe EHR system
+---
+
+## Overview
+
+The `Consultation` model represents the clinical encounter between a patient and doctor. It records vital signs, clinical findings, diagnoses, and treatment plans. Each consultation can be linked to an appointment and may have associated prescriptions and payments.
+
+**Model Location**: `app/Models/Consultation.php`
+
+**Features**:
+- Soft deletes enabled
+- Comprehensive vital signs tracking
+- Relationships with patients, doctors, appointments, prescriptions, and payments
+- Clinical documentation support
+
+## Database Schema
+
+<ResponseField name="id" type="bigint" required>
+  Primary key, auto-incrementing
+</ResponseField>
+
+<ResponseField name="patient_id" type="bigint" required>
+  Foreign key to patients table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="doctor_id" type="bigint" required>
+  Foreign key to users table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="appointment_id" type="bigint">
+  Foreign key to appointments table. Sets to null on delete.
+</ResponseField>
+
+### Vital Signs
+
+<ResponseField name="weight" type="decimal(5,2)">
+  Patient weight in kilograms
+</ResponseField>
+
+<ResponseField name="height" type="decimal(5,2)">
+  Patient height in centimeters
+</ResponseField>
+
+<ResponseField name="temperature" type="decimal(4,1)">
+  Body temperature in Celsius
+</ResponseField>
+
+<ResponseField name="bp_systolic" type="integer">
+  Systolic blood pressure (mmHg)
+</ResponseField>
+
+<ResponseField name="bp_diastolic" type="integer">
+  Diastolic blood pressure (mmHg)
+</ResponseField>
+
+<ResponseField name="heart_rate" type="integer">
+  Heart rate in beats per minute
+</ResponseField>
+
+<ResponseField name="respiratory_rate" type="integer">
+  Respiratory rate in breaths per minute
+</ResponseField>
+
+<ResponseField name="oxygen_saturation" type="integer">
+  Oxygen saturation percentage (SpO2)
+</ResponseField>
+
+### Clinical Record
+
+<ResponseField name="reason_for_visit" type="text" required>
+  Chief complaint or reason for the consultation
+</ResponseField>
+
+<ResponseField name="clinical_findings" type="text">
+  Physical examination findings and observations
+</ResponseField>
+
+<ResponseField name="diagnosis" type="text" required>
+  Medical diagnosis or diagnoses
+</ResponseField>
+
+<ResponseField name="treatment_plan" type="text">
+  Recommended treatment and follow-up plan
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+  Record creation timestamp
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+  Record last update timestamp
+</ResponseField>
+
+<ResponseField name="deleted_at" type="timestamp">
+  Soft delete timestamp (null if not deleted)
+</ResponseField>
+
+## Fillable Attributes
+
+The following attributes can be mass-assigned:
+
+<ParamField body="patient_id" type="integer" required>
+  ID of the patient
+</ParamField>
+
+<ParamField body="doctor_id" type="integer" required>
+  ID of the doctor (User)
+</ParamField>
+
+<ParamField body="appointment_id" type="integer">
+  ID of the related appointment (optional)
+</ParamField>
+
+<ParamField body="weight" type="decimal">
+  Weight in kg (e.g., 75.50)
+</ParamField>
+
+<ParamField body="height" type="decimal">
+  Height in cm (e.g., 175.00)
+</ParamField>
+
+<ParamField body="temperature" type="decimal">
+  Temperature in Celsius (e.g., 36.5)
+</ParamField>
+
+<ParamField body="bp_systolic" type="integer">
+  Systolic blood pressure (e.g., 120)
+</ParamField>
+
+<ParamField body="bp_diastolic" type="integer">
+  Diastolic blood pressure (e.g., 80)
+</ParamField>
+
+<ParamField body="heart_rate" type="integer">
+  Heart rate in bpm (e.g., 72)
+</ParamField>
+
+<ParamField body="respiratory_rate" type="integer">
+  Respiratory rate in breaths/min (e.g., 16)
+</ParamField>
+
+<ParamField body="oxygen_saturation" type="integer">
+  SpO2 percentage (e.g., 98)
+</ParamField>
+
+<ParamField body="reason_for_visit" type="text" required>
+  Chief complaint or reason for visit
+</ParamField>
+
+<ParamField body="clinical_findings" type="text">
+  Physical examination findings
+</ParamField>
+
+<ParamField body="diagnosis" type="text" required>
+  Medical diagnosis
+</ParamField>
+
+<ParamField body="treatment_plan" type="text">
+  Treatment and follow-up plan
+</ParamField>
+
+## Relationships
+
+### Patient
+
+Get the patient associated with this consultation.
+
+```php
+$consultation = Consultation::find(1);
+$patient = $consultation->patient;
+
+echo $patient->full_name;
+echo $patient->allergies;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Patient`
+
+**Foreign Key**: `patient_id`
+
+### Doctor
+
+Get the doctor (User) who conducted this consultation.
+
+```php
+$consultation = Consultation::find(1);
+$doctor = $consultation->doctor;
+
+echo $doctor->name;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\User`
+
+**Foreign Key**: `doctor_id`
+
+### Appointment
+
+Get the appointment associated with this consultation (if any).
+
+```php
+$consultation = Consultation::find(1);
+$appointment = $consultation->appointment;
+
+if ($appointment) {
+    echo $appointment->start_time;
+}
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Appointment`
+
+**Foreign Key**: `appointment_id`
+
+### Prescription
+
+Get the prescription created for this consultation.
+
+```php
+$consultation = Consultation::find(1);
+$prescription = $consultation->prescription;
+
+if ($prescription) {
+    foreach ($prescription->items as $item) {
+        echo $item['medication'];
+    }
+}
+```
+
+**Relationship Type**: `hasOne`
+
+**Related Model**: `App\Models\Prescription`
+
+### Payment
+
+Get the payment associated with this consultation.
+
+```php
+$consultation = Consultation::find(1);
+$payment = $consultation->payment;
+
+if ($payment) {
+    echo "Amount: " . $payment->amount;
+    echo "Status: " . $payment->status;
+}
+```
+
+**Relationship Type**: `hasOne`
+
+**Related Model**: `App\Models\Payment`
+
+## Soft Deletes
+
+The Consultation model uses soft deletes. Deleted records are not permanently removed from the database but marked with a `deleted_at` timestamp.
+
+```php
+// Soft delete a consultation
+$consultation->delete();
+
+// Include soft deleted records
+$allConsultations = Consultation::withTrashed()->get();
+
+// Get only soft deleted records
+$deletedConsultations = Consultation::onlyTrashed()->get();
+
+// Restore a soft deleted consultation
+$consultation->restore();
+
+// Permanently delete
+$consultation->forceDelete();
+```
+
+## Usage Examples
+
+### Creating a Consultation
+
+```php
+use App\Models\Consultation;
+
+$consultation = Consultation::create([
+    'patient_id' => 1,
+    'doctor_id' => 5,
+    'appointment_id' => 10,
+    'weight' => 75.5,
+    'height' => 175.0,
+    'temperature' => 36.5,
+    'bp_systolic' => 120,
+    'bp_diastolic' => 80,
+    'heart_rate' => 72,
+    'respiratory_rate' => 16,
+    'oxygen_saturation' => 98,
+    'reason_for_visit' => 'Dolor de cabeza persistente',
+    'clinical_findings' => 'Paciente alerta y orientado. No se observan signos neurológicos focales.',
+    'diagnosis' => 'Cefalea tensional',
+    'treatment_plan' => 'Analgésicos según necesidad. Control en 2 semanas si persiste.',
+]);
+```
+
+### Updating a Consultation
+
+```php
+$consultation = Consultation::find(1);
+$consultation->update([
+    'clinical_findings' => 'Actualización de hallazgos clínicos',
+    'diagnosis' => 'Diagnóstico actualizado después de pruebas',
+]);
+```
+
+### Querying Consultations
+
+```php
+// Get all consultations for a patient
+$patientConsultations = Consultation::where('patient_id', 1)
+    ->with(['doctor', 'prescription', 'payment'])
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+// Get today's consultations for a doctor
+$todayConsultations = Consultation::where('doctor_id', 5)
+    ->whereDate('created_at', today())
+    ->with('patient')
+    ->get();
+
+// Get consultations with abnormal vitals
+$abnormalVitals = Consultation::where('bp_systolic', '>', 140)
+    ->orWhere('bp_diastolic', '>', 90)
+    ->orWhere('temperature', '>', 37.5)
+    ->with('patient')
+    ->get();
+```
+
+### Working with Vital Signs
+
+```php
+$consultation = Consultation::find(1);
+
+// Calculate BMI
+if ($consultation->weight && $consultation->height) {
+    $heightInMeters = $consultation->height / 100;
+    $bmi = $consultation->weight / ($heightInMeters * $heightInMeters);
+    echo "BMI: " . round($bmi, 2);
+}
+
+// Check blood pressure status
+if ($consultation->bp_systolic >= 140 || $consultation->bp_diastolic >= 90) {
+    echo "Hypertensive reading detected";
+}
+
+// Format blood pressure
+echo "BP: {$consultation->bp_systolic}/{$consultation->bp_diastolic} mmHg";
+```
+
+### Creating Complete Consultation Record
+
+```php
+// Create consultation with prescription and payment
+$consultation = Consultation::create([
+    'patient_id' => 1,
+    'doctor_id' => 5,
+    'appointment_id' => 10,
+    'weight' => 68.0,
+    'height' => 165.0,
+    'temperature' => 38.2,
+    'bp_systolic' => 115,
+    'bp_diastolic' => 75,
+    'heart_rate' => 88,
+    'respiratory_rate' => 20,
+    'oxygen_saturation' => 97,
+    'reason_for_visit' => 'Fiebre y malestar general',
+    'clinical_findings' => 'Faringitis aguda observada',
+    'diagnosis' => 'Faringitis viral',
+    'treatment_plan' => 'Reposo, hidratación, analgésicos',
+]);
+
+// Create prescription
+$consultation->prescription()->create([
+    'patient_id' => 1,
+    'doctor_id' => 5,
+    'items' => [
+        [
+            'medication' => 'Paracetamol',
+            'dosage' => '500mg',
+            'frequency' => 'Cada 6 horas',
+            'duration' => '5 días',
+        ],
+    ],
+    'general_instructions' => 'Tomar con alimentos',
+]);
+
+// Create payment
+$consultation->payment()->create([
+    'patient_id' => 1,
+    'amount' => 500.00,
+    'payment_method' => 'cash',
+    'status' => 'paid',
+]);
+```
+
+### Eager Loading Complete Records
+
+```php
+// Load consultation with all related data
+$consultation = Consultation::with([
+    'patient',
+    'doctor',
+    'appointment',
+    'prescription.doctor',
+    'payment'
+])->find(1);
+
+// Get patient's consultation history with prescriptions
+$history = Consultation::where('patient_id', 1)
+    ->with(['doctor', 'prescription'])
+    ->orderBy('created_at', 'desc')
+    ->get();
+```
+
+### Statistics and Reports
+
+```php
+// Get average vital signs for a patient
+$avgVitals = Consultation::where('patient_id', 1)
+    ->selectRaw('AVG(bp_systolic) as avg_systolic')
+    ->selectRaw('AVG(bp_diastolic) as avg_diastolic')
+    ->selectRaw('AVG(weight) as avg_weight')
+    ->first();
+
+// Count consultations by doctor
+$consultationCount = Consultation::where('doctor_id', 5)
+    ->whereMonth('created_at', now()->month)
+    ->count();
+```

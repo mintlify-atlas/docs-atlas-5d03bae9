@@ -1,0 +1,705 @@
+---
+title: Backup Configuration
+description: Configure automated backups for database and files using Spatie Laravel Backup package
+---
+
+## Overview
+
+Nguhöe EHR uses [Spatie Laravel Backup](https://spatie.be/docs/laravel-backup) to create automated backups of your database and application files. The package provides a robust solution for creating, storing, and managing backups with monitoring and notification capabilities.
+
+## Configuration File
+
+Backup configuration is located at `config/backup.php`.
+
+## Basic Configuration
+
+### Application Name
+
+<ParamField path="backup.name" type="string" default="env('APP_NAME')">
+  The name identifier for your backups. Used for monitoring and organization.
+  
+  ```php
+  'name' => env('APP_NAME', 'laravel-backup'),
+  ```
+</ParamField>
+
+## Source Configuration
+
+### File Backups
+
+<ParamField path="backup.source.files.include" type="array">
+  Directories and files to include in the backup.
+  
+  ```php
+  'include' => [
+      base_path(),  // Entire application
+  ],
+  ```
+</ParamField>
+
+<ParamField path="backup.source.files.exclude" type="array">
+  Directories and files to exclude from the backup.
+  
+  ```php
+  'exclude' => [
+      base_path('vendor'),        // Dependencies (can be reinstalled)
+      base_path('node_modules'),  // Node dependencies
+      storage_path('framework'),  // Cache and temporary files
+  ],
+  ```
+</ParamField>
+
+<ParamField path="backup.source.files.follow_links" type="boolean" default="false">
+  Whether to follow symbolic links during backup.
+  
+  ```php
+  'follow_links' => false,
+  ```
+</ParamField>
+
+<ParamField path="backup.source.files.ignore_unreadable_directories" type="boolean" default="false">
+  Skip directories that cannot be read instead of failing.
+  
+  ```php
+  'ignore_unreadable_directories' => false,
+  ```
+</ParamField>
+
+<ParamField path="backup.source.files.relative_path" type="string|null" default="null">
+  Make paths relative to this directory in the zip file. Set to `base_path()` for cleaner archives.
+  
+  ```php
+  'relative_path' => null,
+  ```
+</ParamField>
+
+### Database Backups
+
+<ParamField path="backup.source.databases" type="array">
+  Database connections to backup. Uses connection names from `config/database.php`.
+  
+  ```php
+  'databases' => [
+      env('DB_CONNECTION', 'mysql'),
+  ],
+  ```
+</ParamField>
+
+**Supported Databases:**
+- MySQL
+- MariaDB
+- PostgreSQL
+- SQLite
+- MongoDB
+
+### Database Dump Options
+
+Customize database dumps by adding a `dump` key to your database connection in `config/database.php`:
+
+```php
+'mysql' => [
+    // ... connection settings
+    'dump' => [
+        // Exclude specific tables
+        'exclude_tables' => [
+            'sessions',
+            'cache',
+            'jobs',
+        ],
+        
+        // Use single transaction (InnoDB only - prevents table locking)
+        'useSingleTransaction' => true,
+        
+        // Add extra mysqldump options
+        'dump_command_options' => [
+            '--skip-lock-tables',
+        ],
+    ],
+],
+```
+
+<ParamField path="backup.database_dump_compressor" type="string|null" default="null">
+  Compress database dumps to save space.
+  
+  **Options:**
+  - `Spatie\DbDumper\Compressors\GzipCompressor::class` - Gzip compression
+  - `null` - No compression
+  
+  ```php
+  'database_dump_compressor' => null,
+  ```
+</ParamField>
+
+<ParamField path="backup.database_dump_file_timestamp_format" type="string|null" default="null">
+  Add timestamp to database dump filename (e.g., 'Y-m-d-H-i-s').
+  
+  ```php
+  'database_dump_file_timestamp_format' => null,
+  ```
+</ParamField>
+
+<ParamField path="backup.database_dump_filename_base" type="string" default="database">
+  Base name for database dump files.
+  
+  **Options:**
+  - `database` - Use database name
+  - `connection` - Use connection name
+  
+  ```php
+  'database_dump_filename_base' => 'database',
+  ```
+</ParamField>
+
+## Destination Configuration
+
+<ParamField path="backup.destination.compression_method" type="int" default="ZipArchive::CM_DEFAULT">
+  Compression algorithm for the backup archive.
+  
+  **Options:**
+  - `ZipArchive::CM_STORE` - No compression (0)
+  - `ZipArchive::CM_DEFAULT` - Default compression
+  - `ZipArchive::CM_DEFLATE` - Deflate compression
+  - `ZipArchive::CM_BZIP2` - Bzip2 compression
+  - `ZipArchive::CM_XZ` - XZ compression
+  
+  ```php
+  'compression_method' => ZipArchive::CM_DEFAULT,
+  ```
+</ParamField>
+
+<ParamField path="backup.destination.compression_level" type="int" default="9">
+  Compression level from 0-9. Higher values mean better compression but slower speed.
+  
+  ```php
+  'compression_level' => 9,
+  ```
+</ParamField>
+
+<ParamField path="backup.destination.filename_prefix" type="string" default="">
+  Prefix for backup filenames.
+  
+  ```php
+  'filename_prefix' => '',
+  ```
+</ParamField>
+
+<ParamField path="backup.destination.disks" type="array">
+  Storage disks where backups will be stored. Must be defined in `config/filesystems.php`.
+  
+  ```php
+  'disks' => [
+      'local',
+  ],
+  ```
+</ParamField>
+
+### Storage Disk Examples
+
+**Local Storage:**
+```php
+'disks' => ['local'],
+```
+
+**Amazon S3:**
+```php
+'disks' => ['s3'],
+```
+
+Configure S3 in `config/filesystems.php` and `.env`:
+```bash
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=nguhoe-ehr-backups
+```
+
+**Multiple Disks:**
+```php
+'disks' => ['local', 's3'],  // Store on both local and S3
+```
+
+<ParamField path="backup.destination.continue_on_failure" type="boolean" default="false">
+  Continue backup process even if some storage targets fail.
+  
+  ```php
+  'continue_on_failure' => false,
+  ```
+</ParamField>
+
+## Security Configuration
+
+<ParamField path="backup.password" type="string|null" default="env('BACKUP_ARCHIVE_PASSWORD')">
+  Password-protect backup archives. Set in `.env` file.
+  
+  ```php
+  'password' => env('BACKUP_ARCHIVE_PASSWORD'),
+  ```
+  
+  In `.env`:
+  ```bash
+  BACKUP_ARCHIVE_PASSWORD=your_secure_password
+  ```
+</ParamField>
+
+<ParamField path="backup.encryption" type="string" default="default">
+  Encryption algorithm for password-protected archives.
+  
+  **Options:**
+  - `none` - No encryption
+  - `default` - AES-256 if available
+  - `aes128` - AES-128
+  - `aes192` - AES-192
+  - `aes256` - AES-256
+  
+  ```php
+  'encryption' => 'default',
+  ```
+</ParamField>
+
+<ParamField path="backup.verify_backup" type="boolean" default="false">
+  Verify backup archive can be opened and contains files after creation. Recommended for critical backups.
+  
+  ```php
+  'verify_backup' => false,
+  ```
+</ParamField>
+
+<ParamField path="backup.temporary_directory" type="string" default="storage_path('app/backup-temp')">
+  Directory for temporary files during backup creation.
+  
+  ```php
+  'temporary_directory' => storage_path('app/backup-temp'),
+  ```
+</ParamField>
+
+## Cleanup Configuration
+
+<ParamField path="cleanup.strategy" type="string" default="Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy">
+  Strategy for automatically cleaning up old backups.
+  
+  ```php
+  'strategy' => \Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy::class,
+  ```
+</ParamField>
+
+### Default Cleanup Strategy
+
+The default strategy keeps:
+- All backups for a certain number of days
+- Daily backups for a period after that
+- Weekly backups for a period after that
+- Monthly backups for a period after that
+- Yearly backups for a period after that
+
+<ParamField path="cleanup.default_strategy.keep_all_backups_for_days" type="int" default="7">
+  Keep all backups for this many days.
+  
+  ```php
+  'keep_all_backups_for_days' => 7,
+  ```
+</ParamField>
+
+<ParamField path="cleanup.default_strategy.keep_daily_backups_for_days" type="int" default="16">
+  After the initial period, keep one backup per day for this many days.
+  
+  ```php
+  'keep_daily_backups_for_days' => 16,
+  ```
+</ParamField>
+
+<ParamField path="cleanup.default_strategy.keep_weekly_backups_for_weeks" type="int" default="8">
+  After the daily period, keep one backup per week for this many weeks.
+  
+  ```php
+  'keep_weekly_backups_for_weeks' => 8,
+  ```
+</ParamField>
+
+<ParamField path="cleanup.default_strategy.keep_monthly_backups_for_months" type="int" default="4">
+  After the weekly period, keep one backup per month for this many months.
+  
+  ```php
+  'keep_monthly_backups_for_months' => 4,
+  ```
+</ParamField>
+
+<ParamField path="cleanup.default_strategy.keep_yearly_backups_for_years" type="int" default="2">
+  After the monthly period, keep one backup per year for this many years.
+  
+  ```php
+  'keep_yearly_backups_for_years' => 2,
+  ```
+</ParamField>
+
+<ParamField path="cleanup.default_strategy.delete_oldest_backups_when_using_more_megabytes_than" type="int|null" default="5000">
+  Delete oldest backups when total storage exceeds this size in megabytes. Set to `null` for unlimited.
+  
+  ```php
+  'delete_oldest_backups_when_using_more_megabytes_than' => 5000,  // 5GB
+  ```
+</ParamField>
+
+## Monitoring Configuration
+
+<ParamField path="monitor_backups" type="array">
+  Configure health checks for your backups.
+  
+  ```php
+  'monitor_backups' => [
+      [
+          'name' => env('APP_NAME', 'laravel-backup'),
+          'disks' => ['local'],
+          'health_checks' => [
+              \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
+              \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
+          ],
+      ],
+  ],
+  ```
+</ParamField>
+
+### Health Checks
+
+**MaximumAgeInDays**: Alerts if the newest backup is older than specified days.
+
+**MaximumStorageInMegabytes**: Alerts if backups use more than specified storage.
+
+## Notification Configuration
+
+<ParamField path="notifications.notifications" type="array">
+  Configure which events trigger notifications and through which channels.
+  
+  ```php
+  'notifications' => [
+      \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class => ['mail'],
+      \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => ['mail'],
+      \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class => ['mail'],
+      \Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification::class => ['mail'],
+      \Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification::class => ['mail'],
+      \Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification::class => ['mail'],
+  ],
+  ```
+</ParamField>
+
+### Mail Notifications
+
+<ParamField path="notifications.mail.to" type="string" default="your@example.com">
+  Email address to receive backup notifications.
+  
+  ```php
+  'mail' => [
+      'to' => 'admin@ehr.example.com',
+  ],
+  ```
+</ParamField>
+
+### Slack Notifications
+
+```php
+'slack' => [
+    'webhook_url' => env('BACKUP_SLACK_WEBHOOK'),
+    'channel' => '#backups',
+    'username' => 'Backup Bot',
+],
+```
+
+### Discord Notifications
+
+```php
+'discord' => [
+    'webhook_url' => env('BACKUP_DISCORD_WEBHOOK'),
+    'username' => 'Backup Bot',
+],
+```
+
+## Running Backups
+
+### Manual Backup
+
+Create a backup manually:
+
+```bash
+php artisan backup:run
+```
+
+**Options:**
+- `--only-db` - Backup only the database
+- `--only-files` - Backup only files
+- `--disable-notifications` - Don't send notifications
+
+### Scheduled Backups
+
+Add to `routes/console.php` or create a scheduled task:
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('backup:run')->daily()->at('02:00');
+```
+
+**Common Schedules:**
+
+```php
+// Daily at 2 AM
+Schedule::command('backup:run')->daily()->at('02:00');
+
+// Every 6 hours
+Schedule::command('backup:run')->everySixHours();
+
+// Twice daily (2 AM and 2 PM)
+Schedule::command('backup:run')->twiceDaily(2, 14);
+
+// Weekly on Sunday at 3 AM
+Schedule::command('backup:run')->weekly()->sundays()->at('03:00');
+
+// Database only - hourly
+Schedule::command('backup:run --only-db')->hourly();
+```
+
+Ensure the Laravel scheduler is running:
+
+```bash
+# Add to crontab
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### Cleanup Old Backups
+
+```bash
+php artisan backup:clean
+```
+
+Runs automatically when creating backups, but can be run manually.
+
+### Monitor Backup Health
+
+```bash
+php artisan backup:monitor
+```
+
+Check if backups meet health requirements.
+
+### List Backups
+
+```bash
+php artisan backup:list
+```
+
+Display all backups with their size and age.
+
+## Restoration Procedures
+
+### Restoring Files
+
+1. Download backup archive from storage
+2. Extract the archive:
+   ```bash
+   unzip backup-name.zip -d /restore/location
+   ```
+3. If password-protected:
+   ```bash
+   unzip -P your_password backup-name.zip -d /restore/location
+   ```
+4. Copy files to application directory
+
+### Restoring Database
+
+**MySQL/MariaDB:**
+
+1. Extract database dump from backup archive
+2. Restore database:
+   ```bash
+   mysql -u username -p database_name < database-dump.sql
+   ```
+
+**PostgreSQL:**
+
+```bash
+psql -U username -d database_name < database-dump.sql
+```
+
+**SQLite:**
+
+```bash
+cp database-dump.sqlite /path/to/database/database.sqlite
+```
+
+### Full Application Restoration
+
+```bash
+# 1. Extract backup
+unzip backup-2024-03-04-02-00-00.zip -d /restore/temp
+
+# 2. Restore files
+cp -r /restore/temp/* /var/www/ehr
+
+# 3. Restore database
+mysql -u nguhoe_user -p nguhoe_ehr < /restore/temp/db-dumps/mysql-nguhoe_ehr.sql
+
+# 4. Set permissions
+chown -R www-data:www-data /var/www/ehr
+chmod -R 755 /var/www/ehr/storage
+chmod -R 755 /var/www/ehr/bootstrap/cache
+
+# 5. Clear and rebuild cache
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+## Best Practices
+
+### Production Configuration
+
+```php
+'backup' => [
+    'name' => env('APP_NAME'),
+    
+    'source' => [
+        'files' => [
+            'include' => [base_path()],
+            'exclude' => [
+                base_path('vendor'),
+                base_path('node_modules'),
+                storage_path('framework/cache'),
+                storage_path('framework/sessions'),
+                storage_path('framework/views'),
+            ],
+        ],
+        'databases' => [env('DB_CONNECTION')],
+    ],
+    
+    'destination' => [
+        'disks' => ['local', 's3'],  // Store locally and offsite
+    ],
+    
+    'password' => env('BACKUP_ARCHIVE_PASSWORD'),
+    'encryption' => 'default',
+    'verify_backup' => true,  // Verify critical backups
+],
+
+'monitor_backups' => [
+    [
+        'name' => env('APP_NAME'),
+        'disks' => ['s3'],  // Monitor offsite backups
+        'health_checks' => [
+            MaximumAgeInDays::class => 1,        // Alert if no backup in 24h
+            MaximumStorageInMegabytes::class => 10000,  // Alert if > 10GB
+        ],
+    ],
+],
+```
+
+### Security Recommendations
+
+1. **Always password-protect production backups**
+   ```bash
+   BACKUP_ARCHIVE_PASSWORD=strong_random_password
+   ```
+
+2. **Store backups offsite** (S3, Dropbox, etc.)
+   ```php
+   'disks' => ['local', 's3'],
+   ```
+
+3. **Exclude sensitive development files**
+   ```php
+   'exclude' => [
+       base_path('.env'),  // Don't backup .env directly
+       base_path('node_modules'),
+       base_path('vendor'),
+   ],
+   ```
+
+4. **Monitor backup health**
+   ```bash
+   Schedule::command('backup:monitor')->daily();
+   ```
+
+5. **Test restoration regularly**
+
+### Storage Recommendations
+
+- **Local**: Quick access, but vulnerable to server failure
+- **S3**: Reliable offsite storage, versioning support
+- **Multiple disks**: Best practice - local for quick restore + offsite for disaster recovery
+
+### Scheduling Recommendations
+
+Based on data criticality:
+
+- **High criticality** (patient data): Every 6 hours + full daily backup
+- **Medium criticality**: Daily backups
+- **Low criticality**: Weekly backups
+
+```php
+// High criticality schedule
+Schedule::command('backup:run --only-db')->everySixHours();
+Schedule::command('backup:run')->daily()->at('02:00');
+Schedule::command('backup:monitor')->daily()->at('03:00');
+Schedule::command('backup:clean')->daily()->at('04:00');
+```
+
+## Troubleshooting
+
+### Backup Fails with Timeout
+
+Increase PHP timeout in backup command:
+
+```bash
+php -d max_execution_time=600 artisan backup:run
+```
+
+### Large Backups
+
+Exclude unnecessary files:
+
+```php
+'exclude' => [
+    base_path('storage/logs'),
+    storage_path('app/public/temp'),
+],
+```
+
+Or backup database separately:
+
+```bash
+php artisan backup:run --only-db
+```
+
+### Permission Errors
+
+Ensure storage directory is writable:
+
+```bash
+chmod -R 775 storage
+chown -R www-data:www-data storage
+```
+
+### S3 Upload Fails
+
+Verify AWS credentials in `.env`:
+
+```bash
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=your-bucket
+```
+
+### Missing mysqldump Command
+
+Install MySQL client:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install mysql-client
+
+# CentOS/RHEL
+sudo yum install mysql
+```
+
+## Related Documentation
+
+- [Environment Configuration](/configuration/environment)
+- [Spatie Laravel Backup Documentation](https://spatie.be/docs/laravel-backup)

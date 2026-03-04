@@ -1,0 +1,384 @@
+---
+title: Prescription Model
+description: Prescription model for managing medication orders and instructions in the Nguhöe EHR system
+---
+
+## Overview
+
+The `Prescription` model represents medication orders created during consultations. It stores an array of prescription items (medications) along with dosage, frequency, duration, and general instructions.
+
+**Model Location**: `app/Models/Prescription.php`
+
+**Features**:
+- Soft deletes enabled
+- JSON casting for prescription items array
+- Relationships with consultations, patients, and doctors
+- Support for multiple medications in a single prescription
+
+## Database Schema
+
+<ResponseField name="id" type="bigint" required>
+  Primary key, auto-incrementing
+</ResponseField>
+
+<ResponseField name="consultation_id" type="bigint" required>
+  Foreign key to consultations table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="patient_id" type="bigint" required>
+  Foreign key to patients table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="doctor_id" type="bigint" required>
+  Foreign key to users table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="items" type="json" required>
+  Array of prescription items. Each item contains:
+  - `medication` - Medication name
+  - `dosage` - Dosage amount and form
+  - `frequency` - How often to take
+  - `duration` - Length of treatment
+</ResponseField>
+
+<ResponseField name="general_instructions" type="text">
+  General instructions for the entire prescription
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+  Record creation timestamp
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+  Record last update timestamp
+</ResponseField>
+
+<ResponseField name="deleted_at" type="timestamp">
+  Soft delete timestamp (null if not deleted)
+</ResponseField>
+
+## Fillable Attributes
+
+The following attributes can be mass-assigned:
+
+<ParamField body="consultation_id" type="integer" required>
+  ID of the related consultation
+</ParamField>
+
+<ParamField body="patient_id" type="integer" required>
+  ID of the patient
+</ParamField>
+
+<ParamField body="doctor_id" type="integer" required>
+  ID of the prescribing doctor (User)
+</ParamField>
+
+<ParamField body="items" type="array" required>
+  Array of prescription items. Each item should have:
+  
+  ```json
+  [
+    {
+      "medication": "Medication name",
+      "dosage": "500mg",
+      "frequency": "Cada 8 horas",
+      "duration": "7 días"
+    }
+  ]
+  ```
+</ParamField>
+
+<ParamField body="general_instructions" type="text">
+  General instructions (e.g., "Tomar con alimentos")
+</ParamField>
+
+## Relationships
+
+### Consultation
+
+Get the consultation associated with this prescription.
+
+```php
+$prescription = Prescription::find(1);
+$consultation = $prescription->consultation;
+
+echo $consultation->diagnosis;
+echo $consultation->treatment_plan;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Consultation`
+
+**Foreign Key**: `consultation_id`
+
+### Patient
+
+Get the patient for this prescription.
+
+```php
+$prescription = Prescription::find(1);
+$patient = $prescription->patient;
+
+echo $patient->full_name;
+echo $patient->allergies; // Important for safety checks
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Patient`
+
+**Foreign Key**: `patient_id`
+
+### Doctor
+
+Get the doctor who prescribed this medication.
+
+```php
+$prescription = Prescription::find(1);
+$doctor = $prescription->doctor;
+
+echo "Prescribed by: " . $doctor->name;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\User`
+
+**Foreign Key**: `doctor_id`
+
+## Type Casting
+
+The model automatically casts the following attributes:
+
+- `items`: Cast to/from `array` (stored as JSON in database)
+
+## Soft Deletes
+
+The Prescription model uses soft deletes. Deleted records are not permanently removed from the database but marked with a `deleted_at` timestamp.
+
+```php
+// Soft delete a prescription
+$prescription->delete();
+
+// Include soft deleted records
+$allPrescriptions = Prescription::withTrashed()->get();
+
+// Get only soft deleted records
+$deletedPrescriptions = Prescription::onlyTrashed()->get();
+
+// Restore a soft deleted prescription
+$prescription->restore();
+
+// Permanently delete
+$prescription->forceDelete();
+```
+
+## Usage Examples
+
+### Creating a Prescription
+
+```php
+use App\Models\Prescription;
+
+$prescription = Prescription::create([
+    'consultation_id' => 1,
+    'patient_id' => 1,
+    'doctor_id' => 5,
+    'items' => [
+        [
+            'medication' => 'Amoxicilina',
+            'dosage' => '500mg',
+            'frequency' => 'Cada 8 horas',
+            'duration' => '7 días',
+        ],
+        [
+            'medication' => 'Ibuprofeno',
+            'dosage' => '400mg',
+            'frequency' => 'Cada 6 horas según necesidad',
+            'duration' => '5 días',
+        ],
+    ],
+    'general_instructions' => 'Tomar con alimentos. Completar el tratamiento antibiótico aunque se sienta mejor.',
+]);
+```
+
+### Working with Prescription Items
+
+```php
+$prescription = Prescription::find(1);
+
+// Access items array
+foreach ($prescription->items as $item) {
+    echo "Medication: {$item['medication']}\n";
+    echo "Dosage: {$item['dosage']}\n";
+    echo "Frequency: {$item['frequency']}\n";
+    echo "Duration: {$item['duration']}\n";
+    echo "---\n";
+}
+
+// Count medications
+$medicationCount = count($prescription->items);
+
+// Add a new item to existing prescription
+$items = $prescription->items;
+$items[] = [
+    'medication' => 'Paracetamol',
+    'dosage' => '500mg',
+    'frequency' => 'Cada 6 horas',
+    'duration' => '3 días',
+];
+$prescription->update(['items' => $items]);
+```
+
+### Querying Prescriptions
+
+```php
+// Get all prescriptions for a patient
+$patientPrescriptions = Prescription::where('patient_id', 1)
+    ->with('doctor')
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+// Get prescriptions by a specific doctor
+$doctorPrescriptions = Prescription::where('doctor_id', 5)
+    ->with(['patient', 'consultation'])
+    ->get();
+
+// Get recent prescriptions
+$recentPrescriptions = Prescription::where('created_at', '>=', now()->subDays(30))
+    ->with(['patient', 'doctor'])
+    ->get();
+```
+
+### Searching for Specific Medications
+
+```php
+// Find prescriptions containing a specific medication
+$amoxicillinPrescriptions = Prescription::whereJsonContains('items', [
+    ['medication' => 'Amoxicilina']
+])->get();
+
+// Using whereRaw for more complex JSON queries
+$prescriptions = Prescription::whereRaw(
+    "JSON_SEARCH(items, 'one', ?) IS NOT NULL",
+    ['%Ibuprofeno%']
+)->get();
+```
+
+### Creating Prescription with Consultation
+
+```php
+use App\Models\Consultation;
+
+$consultation = Consultation::find(1);
+
+// Create prescription directly from consultation
+$prescription = $consultation->prescription()->create([
+    'patient_id' => $consultation->patient_id,
+    'doctor_id' => $consultation->doctor_id,
+    'items' => [
+        [
+            'medication' => 'Metformina',
+            'dosage' => '850mg',
+            'frequency' => 'Dos veces al día',
+            'duration' => 'Continuo',
+        ],
+    ],
+    'general_instructions' => 'Tomar con las comidas principales',
+]);
+```
+
+### Updating a Prescription
+
+```php
+$prescription = Prescription::find(1);
+
+// Update general instructions
+$prescription->update([
+    'general_instructions' => 'Tomar con abundante agua. Evitar alcohol.',
+]);
+
+// Update specific medication dosage
+$items = $prescription->items;
+$items[0]['dosage'] = '1000mg'; // Update first medication dosage
+$prescription->update(['items' => $items]);
+```
+
+### Eager Loading Complete Prescription Data
+
+```php
+// Load prescription with all related information
+$prescription = Prescription::with([
+    'patient' => function ($query) {
+        $query->select('id', 'full_name', 'allergies');
+    },
+    'doctor' => function ($query) {
+        $query->select('id', 'name');
+    },
+    'consultation' => function ($query) {
+        $query->select('id', 'diagnosis', 'treatment_plan');
+    }
+])->find(1);
+```
+
+### Generating Prescription Report
+
+```php
+$prescription = Prescription::with(['patient', 'doctor', 'consultation'])
+    ->find(1);
+
+// Format for display or PDF generation
+$report = [
+    'prescription_id' => $prescription->id,
+    'date' => $prescription->created_at->format('d/m/Y'),
+    'patient' => [
+        'name' => $prescription->patient->full_name,
+        'age' => $prescription->patient->birth_date->age ?? null,
+    ],
+    'doctor' => [
+        'name' => $prescription->doctor->name,
+    ],
+    'diagnosis' => $prescription->consultation->diagnosis,
+    'medications' => $prescription->items,
+    'instructions' => $prescription->general_instructions,
+];
+```
+
+### Patient Medication History
+
+```php
+// Get all medications ever prescribed to a patient
+$patientId = 1;
+$medicationHistory = Prescription::where('patient_id', $patientId)
+    ->with('consultation')
+    ->orderBy('created_at', 'desc')
+    ->get()
+    ->flatMap(function ($prescription) {
+        return collect($prescription->items)->map(function ($item) use ($prescription) {
+            return array_merge($item, [
+                'prescribed_date' => $prescription->created_at,
+                'diagnosis' => $prescription->consultation->diagnosis ?? null,
+            ]);
+        });
+    });
+```
+
+### Validation Example
+
+```php
+// Validate prescription items structure
+$validated = $request->validate([
+    'consultation_id' => 'required|exists:consultations,id',
+    'patient_id' => 'required|exists:patients,id',
+    'doctor_id' => 'required|exists:users,id',
+    'items' => 'required|array|min:1',
+    'items.*.medication' => 'required|string',
+    'items.*.dosage' => 'required|string',
+    'items.*.frequency' => 'required|string',
+    'items.*.duration' => 'required|string',
+    'general_instructions' => 'nullable|string',
+]);
+
+$prescription = Prescription::create($validated);
+```

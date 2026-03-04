@@ -1,0 +1,241 @@
+---
+title: Prescription Controller
+description: API endpoints for viewing and downloading prescription PDFs in the Nguhöe EHR system
+---
+
+The Prescription Controller provides PDF generation and access control for medical prescriptions. All authenticated users can access prescriptions based on ownership validation.
+
+## Authentication
+
+All endpoints require:
+- Middleware: `auth`, `verified`
+
+## Authorization
+
+Access to prescriptions is controlled by the `authorizeAccess()` method with role-based rules:
+
+- **Admin**: Full access to all prescriptions
+- **Doctor**: Access to prescriptions from their own consultations
+- **Patient**: Access to their own prescriptions only
+- **Receptionist**: Full access (for distributing prescriptions to patients)
+
+Unauthorized access returns 403 error: "No tienes acceso a esta receta."
+
+## Endpoints
+
+### Download Prescription
+
+```http
+GET /prescriptions/{prescription}/download
+```
+
+Generates and downloads the prescription as a PDF file.
+
+#### Path Parameters
+
+<ParamField path="prescription" type="integer" required>
+  Prescription ID
+</ParamField>
+
+#### Response
+
+Returns a downloadable PDF file with filename format:
+```
+receta-{patient_full_name}-{YYYYMMDD}.pdf
+```
+
+Example: `receta-Juan Perez-20260304.pdf`
+
+#### Headers
+
+```http
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="receta-Juan Perez-20260304.pdf"
+```
+
+---
+
+### Preview Prescription
+
+```http
+GET /prescriptions/{prescription}/preview
+```
+
+Generates and displays the prescription PDF in the browser (inline view).
+
+#### Path Parameters
+
+<ParamField path="prescription" type="integer" required>
+  Prescription ID
+</ParamField>
+
+#### Response
+
+Returns a PDF stream for inline browser viewing.
+
+#### Headers
+
+```http
+Content-Type: application/pdf
+Content-Disposition: inline
+```
+
+## Authorization Logic
+
+The controller validates access using the following logic:
+
+### Admin Role
+```php
+if ($user->hasRole('admin')) {
+    return; // Full access
+}
+```
+
+### Doctor Role
+```php
+if ($user->hasRole('doctor') && 
+    $prescription->consultation->doctor_id === $user->id) {
+    return; // Access granted
+}
+```
+Doctors can only access prescriptions from consultations they conducted.
+
+### Patient Role
+```php
+if ($user->hasRole('patient')) {
+    $patient = Patient::where('user_id', $user->id)->first();
+    if ($patient && $prescription->patient_id === $patient->id) {
+        return; // Access granted
+    }
+}
+```
+Patients can only access their own prescriptions.
+
+### Receptionist Role
+```php
+if ($user->hasRole('receptionist')) {
+    return; // Full access
+}
+```
+Receptionists can access all prescriptions to assist with distribution.
+
+## PDF Generation
+
+Prescriptions are generated using the `GeneratePrescriptionPdfAction` action class.
+
+### Required Relationships
+
+Before generating the PDF, the consultation relationship must be loaded:
+
+```php
+$prescription->load('consultation');
+```
+
+### Prescription Data Structure
+
+<ResponseField name="prescription" type="object">
+  Prescription model with relationships
+  
+  <ResponseField name="id" type="integer">
+    Prescription ID
+  </ResponseField>
+  
+  <ResponseField name="consultation_id" type="integer">
+    Associated consultation ID
+  </ResponseField>
+  
+  <ResponseField name="patient_id" type="integer">
+    Patient ID
+  </ResponseField>
+  
+  <ResponseField name="patient" type="object">
+    Patient information (name, document ID, etc.)
+  </ResponseField>
+  
+  <ResponseField name="doctor_id" type="integer">
+    Prescribing doctor ID
+  </ResponseField>
+  
+  <ResponseField name="doctor" type="object">
+    Doctor information (name, credentials)
+  </ResponseField>
+  
+  <ResponseField name="items" type="array">
+    Array of prescribed medications
+    
+    <ResponseField name="medication" type="string">
+      Medication name
+    </ResponseField>
+    
+    <ResponseField name="dosage" type="string">
+      Dosage instructions
+    </ResponseField>
+    
+    <ResponseField name="frequency" type="string">
+      Administration frequency
+    </ResponseField>
+    
+    <ResponseField name="duration" type="string">
+      Treatment duration
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="general_instructions" type="string">
+    General prescription instructions
+  </ResponseField>
+  
+  <ResponseField name="created_at" type="datetime">
+    Prescription creation timestamp
+  </ResponseField>
+</ResponseField>
+
+## Implementation Details
+
+- Source: `app/Http/Controllers/PrescriptionController.php`
+- Routes: `/prescriptions/{prescription}/download` and `/prescriptions/{prescription}/preview`
+- Uses action class: `GeneratePrescriptionPdfAction`
+- Soft deletes enabled on Prescription model
+- Relationships: `consultation`, `patient`, `doctor`
+
+## Security Considerations
+
+1. **Server-Side Validation**: All access checks are performed server-side before PDF generation
+2. **Consultation Loading**: The consultation relationship must be loaded for doctor ownership validation
+3. **Patient Matching**: Patient role access requires matching the patient record linked to the user account
+4. **No Direct Database IDs in URLs**: Uses route model binding for secure ID resolution
+
+## Use Cases
+
+### Doctor Workflow
+1. Create consultation with prescription data via [Consultation Controller](/api/controllers/consultation-controller)
+2. Preview prescription: `GET /prescriptions/{id}/preview`
+3. Share download link with patient
+
+### Patient Workflow
+1. View consultation history on patient portal
+2. Download prescription: `GET /prescriptions/{id}/download`
+3. Print or save PDF for pharmacy
+
+### Receptionist Workflow
+1. Access patient record
+2. Print prescription: `GET /prescriptions/{id}/download`
+3. Provide physical copy to patient
+
+## Error Responses
+
+### 403 Forbidden
+```json
+{
+  "message": "No tienes acceso a esta receta."
+}
+```
+
+Returned when user attempts to access a prescription they don't have permission to view.
+
+### 404 Not Found
+Returned when prescription ID doesn't exist or has been soft deleted.
+
+## Related Resources
+
+- [Consultation Controller](/api/controllers/consultation-controller) - Create consultations with prescriptions
+- [Patient Controller](/api/controllers/patient-controller) - View patient prescription history

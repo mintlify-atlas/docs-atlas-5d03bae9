@@ -1,0 +1,311 @@
+---
+title: Consultation Controller
+description: API endpoints for managing patient consultations in the Nguhöe EHR system
+---
+
+The Consultation Controller handles medical consultation records including vital signs, diagnosis, treatment plans, and prescriptions. Access is restricted to authenticated users with admin or doctor roles.
+
+## Authentication
+
+All endpoints require:
+- Middleware: `auth`, `verified`
+- Role: `admin` or `doctor` only
+
+## Endpoints
+
+### Create Consultation Form
+
+```http
+GET /consultations/create
+```
+
+Displays the form for creating a new consultation.
+
+#### Query Parameters
+
+<ParamField query="patient_id" type="integer" optional>
+  Pre-select a patient for the consultation
+</ParamField>
+
+<ParamField query="appointment_id" type="integer" optional>
+  Link consultation to a specific appointment. Automatically loads the associated patient.
+</ParamField>
+
+#### Response
+
+Returns an Inertia render with:
+
+<ResponseField name="patient" type="object">
+  Patient information (if patient_id or appointment_id provided)
+</ResponseField>
+
+<ResponseField name="appointment" type="object">
+  Appointment information with patient relationship (if appointment_id provided)
+</ResponseField>
+
+---
+
+### Store Consultation
+
+```http
+POST /consultations
+```
+
+Creates a new consultation record with vital signs, diagnosis, treatment, and optional prescription.
+
+#### Request Body
+
+##### Required Fields
+
+<ParamField body="patient_id" type="integer" required>
+  Patient ID (must exist in patients table)
+</ParamField>
+
+<ParamField body="doctor_id" type="integer" required>
+  Doctor ID (must exist in users table). Note: This is automatically overridden to the authenticated user's ID for security.
+</ParamField>
+
+<ParamField body="reason_for_visit" type="string" required>
+  Reason for the patient's visit
+</ParamField>
+
+<ParamField body="diagnosis" type="string" required>
+  Medical diagnosis
+</ParamField>
+
+##### Optional Fields - Vital Signs
+
+<ParamField body="weight" type="number" optional>
+  Patient weight in kg (0-500)
+</ParamField>
+
+<ParamField body="height" type="number" optional>
+  Patient height in cm (0-300)
+</ParamField>
+
+<ParamField body="temperature" type="number" optional>
+  Body temperature in Celsius (30-45)
+</ParamField>
+
+<ParamField body="bp_systolic" type="integer" optional>
+  Systolic blood pressure in mmHg (40-250)
+</ParamField>
+
+<ParamField body="bp_diastolic" type="integer" optional>
+  Diastolic blood pressure in mmHg (30-150)
+</ParamField>
+
+<ParamField body="heart_rate" type="integer" optional>
+  Heart rate in beats per minute (30-220)
+</ParamField>
+
+<ParamField body="respiratory_rate" type="integer" optional>
+  Respiratory rate in breaths per minute (8-60)
+</ParamField>
+
+<ParamField body="oxygen_saturation" type="integer" optional>
+  Blood oxygen saturation percentage (50-100)
+</ParamField>
+
+##### Optional Fields - Clinical Information
+
+<ParamField body="appointment_id" type="integer" optional>
+  Link to existing appointment (must exist in appointments table)
+</ParamField>
+
+<ParamField body="clinical_findings" type="string" optional>
+  Clinical observations and findings
+</ParamField>
+
+<ParamField body="treatment_plan" type="string" optional>
+  Recommended treatment plan
+</ParamField>
+
+##### Optional Fields - Prescription
+
+<ParamField body="prescription_items" type="array" optional>
+  Array of medications to prescribe
+  
+  <ParamField body="prescription_items[].medication" type="string" required>
+    Medication name (required if prescription_items provided)
+  </ParamField>
+  
+  <ParamField body="prescription_items[].dosage" type="string" required>
+    Dosage instructions (required if prescription_items provided)
+  </ParamField>
+  
+  <ParamField body="prescription_items[].frequency" type="string" optional>
+    Frequency of administration (e.g., "3 times daily")
+  </ParamField>
+  
+  <ParamField body="prescription_items[].duration" type="string" optional>
+    Treatment duration (e.g., "7 days")
+  </ParamField>
+</ParamField>
+
+<ParamField body="prescription_instructions" type="string" optional>
+  General prescription instructions
+</ParamField>
+
+##### Optional Fields - Payment
+
+<ParamField body="payment_amount" type="number" optional>
+  Consultation fee (minimum: 0)
+</ParamField>
+
+<ParamField body="payment_method" type="string" optional>
+  Payment method: `cash`, `card`, or `transfer`
+</ParamField>
+
+#### Security
+
+The `doctor_id` field is automatically overridden with the authenticated user's ID to prevent impersonation:
+
+```php
+$validated['doctor_id'] = $request->user()->id;
+```
+
+#### Response
+
+Redirects to `/patients/{patient_id}` with success message: "Consulta registrada exitosamente."
+
+---
+
+### Show Consultation
+
+```http
+GET /consultations/{consultation}
+```
+
+Displays a single consultation's details.
+
+#### Path Parameters
+
+<ParamField path="consultation" type="integer" required>
+  Consultation ID
+</ParamField>
+
+#### Authorization
+
+- **Admins**: Can view any consultation
+- **Doctors**: Can only view their own consultations (where `doctor_id` matches authenticated user)
+
+Returns 403 error with message "No tienes acceso a esta consulta." if a doctor attempts to access another doctor's consultation.
+
+#### Response
+
+<ResponseField name="consultation" type="object">
+  Consultation record with relationships
+  
+  <ResponseField name="id" type="integer">
+    Consultation ID
+  </ResponseField>
+  
+  <ResponseField name="patient_id" type="integer">
+    Patient ID
+  </ResponseField>
+  
+  <ResponseField name="patient" type="object">
+    Patient information
+  </ResponseField>
+  
+  <ResponseField name="doctor_id" type="integer">
+    Doctor ID
+  </ResponseField>
+  
+  <ResponseField name="doctor" type="object">
+    Doctor information
+  </ResponseField>
+  
+  <ResponseField name="appointment_id" type="integer">
+    Associated appointment ID (if linked)
+  </ResponseField>
+  
+  <ResponseField name="weight" type="number">
+    Weight in kg
+  </ResponseField>
+  
+  <ResponseField name="height" type="number">
+    Height in cm
+  </ResponseField>
+  
+  <ResponseField name="temperature" type="number">
+    Temperature in Celsius
+  </ResponseField>
+  
+  <ResponseField name="bp_systolic" type="integer">
+    Systolic blood pressure
+  </ResponseField>
+  
+  <ResponseField name="bp_diastolic" type="integer">
+    Diastolic blood pressure
+  </ResponseField>
+  
+  <ResponseField name="heart_rate" type="integer">
+    Heart rate (bpm)
+  </ResponseField>
+  
+  <ResponseField name="respiratory_rate" type="integer">
+    Respiratory rate (breaths/min)
+  </ResponseField>
+  
+  <ResponseField name="oxygen_saturation" type="integer">
+    O2 saturation percentage
+  </ResponseField>
+  
+  <ResponseField name="reason_for_visit" type="string">
+    Reason for visit
+  </ResponseField>
+  
+  <ResponseField name="clinical_findings" type="string">
+    Clinical findings
+  </ResponseField>
+  
+  <ResponseField name="diagnosis" type="string">
+    Medical diagnosis
+  </ResponseField>
+  
+  <ResponseField name="treatment_plan" type="string">
+    Treatment plan
+  </ResponseField>
+  
+  <ResponseField name="prescription" type="object">
+    Associated prescription (if created)
+  </ResponseField>
+</ResponseField>
+
+## Implementation Details
+
+- Source: `app/Http/Controllers/ConsultationController.php`
+- Route: `/consultations`
+- Uses action class: `CreateConsultationAction`
+- Soft deletes enabled
+- Relationships: `patient`, `doctor`, `appointment`, `prescription`
+
+## Vital Signs Validation Ranges
+
+All vital sign fields are validated with medically appropriate ranges:
+
+| Field | Range | Unit |
+|-------|-------|------|
+| Weight | 0-500 | kg |
+| Height | 0-300 | cm |
+| Temperature | 30-45 | °C |
+| BP Systolic | 40-250 | mmHg |
+| BP Diastolic | 30-150 | mmHg |
+| Heart Rate | 30-220 | bpm |
+| Respiratory Rate | 8-60 | breaths/min |
+| O2 Saturation | 50-100 | % |
+
+## Workflow Integration
+
+1. **From Appointment**: Consultations can be linked to appointments via `appointment_id` query parameter
+2. **Prescription Creation**: Prescription data can be submitted alongside consultation data
+3. **Payment Recording**: Payment information can be captured during consultation creation
+4. **Security**: Doctor ID is enforced server-side to prevent impersonation
+
+## Related Resources
+
+- [Appointment Controller](/api/controllers/appointment-controller) - Schedule consultations
+- [Prescription Controller](/api/controllers/prescription-controller) - View and download prescriptions
+- [Patient Controller](/api/controllers/patient-controller) - Patient medical records

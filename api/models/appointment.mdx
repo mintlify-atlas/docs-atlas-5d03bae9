@@ -1,0 +1,295 @@
+---
+title: Appointment Model
+description: Appointment model for scheduling patient visits with doctors in the Nguhöe EHR system
+---
+
+## Overview
+
+The `Appointment` model manages scheduled visits between patients and doctors. It tracks appointment timing, status, reason for visit, and related notes.
+
+**Model Location**: `app/Models/Appointment.php`
+
+**Features**:
+- Soft deletes enabled
+- DateTime casting for start and end times
+- Relationships with patients and doctors
+- Status tracking (scheduled, confirmed, completed, cancelled, no_show)
+
+## Database Schema
+
+<ResponseField name="id" type="bigint" required>
+  Primary key, auto-incrementing
+</ResponseField>
+
+<ResponseField name="patient_id" type="bigint" required>
+  Foreign key to patients table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="doctor_id" type="bigint" required>
+  Foreign key to users table. Cascades on delete.
+</ResponseField>
+
+<ResponseField name="start_time" type="datetime" required>
+  Appointment start date and time
+</ResponseField>
+
+<ResponseField name="end_time" type="datetime" required>
+  Appointment end date and time
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Appointment status. Default: `scheduled`
+  
+  Possible values:
+  - `scheduled` - Initial state when appointment is created
+  - `confirmed` - Patient confirmed the appointment
+  - `completed` - Appointment finished successfully
+  - `cancelled` - Appointment was cancelled
+  - `no_show` - Patient did not show up
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  Reason for the appointment visit
+</ResponseField>
+
+<ResponseField name="notes" type="text">
+  Additional notes about the appointment
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+  Record creation timestamp
+</ResponseField>
+
+<ResponseField name="updated_at" type="timestamp">
+  Record last update timestamp
+</ResponseField>
+
+<ResponseField name="deleted_at" type="timestamp">
+  Soft delete timestamp (null if not deleted)
+</ResponseField>
+
+## Fillable Attributes
+
+The following attributes can be mass-assigned:
+
+<ParamField body="patient_id" type="integer" required>
+  ID of the patient for this appointment
+</ParamField>
+
+<ParamField body="doctor_id" type="integer" required>
+  ID of the doctor (User) for this appointment
+</ParamField>
+
+<ParamField body="start_time" type="datetime" required>
+  Appointment start time (format: Y-m-d H:i:s)
+</ParamField>
+
+<ParamField body="end_time" type="datetime" required>
+  Appointment end time (format: Y-m-d H:i:s)
+</ParamField>
+
+<ParamField body="status" type="string">
+  Status: `scheduled`, `confirmed`, `completed`, `cancelled`, or `no_show`
+</ParamField>
+
+<ParamField body="reason" type="string">
+  Reason for the visit
+</ParamField>
+
+<ParamField body="notes" type="text">
+  Additional notes
+</ParamField>
+
+## Relationships
+
+### Patient
+
+Get the patient associated with this appointment.
+
+```php
+$appointment = Appointment::find(1);
+$patient = $appointment->patient;
+
+// Access patient information
+echo $patient->full_name;
+echo $patient->phone;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\Patient`
+
+**Foreign Key**: `patient_id`
+
+### Doctor
+
+Get the doctor (User) associated with this appointment.
+
+```php
+$appointment = Appointment::find(1);
+$doctor = $appointment->doctor;
+
+// Access doctor information
+echo $doctor->name;
+echo $doctor->email;
+```
+
+**Relationship Type**: `belongsTo`
+
+**Related Model**: `App\Models\User`
+
+**Foreign Key**: `doctor_id`
+
+**Owner Key**: `id` (on users table)
+
+## Type Casting
+
+The model automatically casts the following attributes:
+
+- `start_time`: Cast to Carbon `datetime` instance
+- `end_time`: Cast to Carbon `datetime` instance
+
+## Soft Deletes
+
+The Appointment model uses soft deletes. Deleted records are not permanently removed from the database but marked with a `deleted_at` timestamp.
+
+```php
+// Soft delete an appointment
+$appointment->delete();
+
+// Include soft deleted records
+$allAppointments = Appointment::withTrashed()->get();
+
+// Get only soft deleted records
+$deletedAppointments = Appointment::onlyTrashed()->get();
+
+// Restore a soft deleted appointment
+$appointment->restore();
+
+// Permanently delete
+$appointment->forceDelete();
+```
+
+## Usage Examples
+
+### Creating an Appointment
+
+```php
+use App\Models\Appointment;
+use Carbon\Carbon;
+
+$appointment = Appointment::create([
+    'patient_id' => 1,
+    'doctor_id' => 5,
+    'start_time' => Carbon::parse('2026-03-10 09:00:00'),
+    'end_time' => Carbon::parse('2026-03-10 09:30:00'),
+    'status' => 'scheduled',
+    'reason' => 'Consulta general',
+    'notes' => 'Primera visita del paciente',
+]);
+```
+
+### Updating Appointment Status
+
+```php
+$appointment = Appointment::find(1);
+
+// Confirm appointment
+$appointment->update(['status' => 'confirmed']);
+
+// Mark as completed
+$appointment->update(['status' => 'completed']);
+
+// Cancel appointment
+$appointment->update([
+    'status' => 'cancelled',
+    'notes' => 'Paciente solicitó cancelación',
+]);
+```
+
+### Querying Appointments
+
+```php
+// Get today's appointments
+$todayAppointments = Appointment::whereDate('start_time', today())
+    ->with(['patient', 'doctor'])
+    ->orderBy('start_time')
+    ->get();
+
+// Get upcoming appointments for a doctor
+$doctorAppointments = Appointment::where('doctor_id', 5)
+    ->where('start_time', '>=', now())
+    ->where('status', '!=', 'cancelled')
+    ->get();
+
+// Get patient's appointment history
+$patientHistory = Appointment::where('patient_id', 1)
+    ->with('doctor')
+    ->orderBy('start_time', 'desc')
+    ->get();
+```
+
+### Working with DateTime Casts
+
+```php
+$appointment = Appointment::find(1);
+
+// Access as Carbon instances
+$duration = $appointment->end_time->diffInMinutes($appointment->start_time);
+echo "Duration: {$duration} minutes";
+
+// Format dates
+echo $appointment->start_time->format('d/m/Y H:i');
+echo $appointment->start_time->diffForHumans(); // "2 hours from now"
+
+// Check if appointment is in the past
+if ($appointment->start_time->isPast()) {
+    echo "This appointment has already occurred";
+}
+```
+
+### Finding Available Time Slots
+
+```php
+// Check if a time slot is available for a doctor
+$hasConflict = Appointment::where('doctor_id', 5)
+    ->where('status', '!=', 'cancelled')
+    ->where(function ($query) use ($startTime, $endTime) {
+        $query->whereBetween('start_time', [$startTime, $endTime])
+              ->orWhereBetween('end_time', [$startTime, $endTime]);
+    })
+    ->exists();
+```
+
+### Filtering by Status
+
+```php
+// Get all confirmed appointments
+$confirmed = Appointment::where('status', 'confirmed')->get();
+
+// Get appointments that need follow-up (no-show)
+$noShows = Appointment::where('status', 'no_show')
+    ->with('patient')
+    ->get();
+
+// Get completed appointments for billing
+$completedToday = Appointment::where('status', 'completed')
+    ->whereDate('start_time', today())
+    ->get();
+```
+
+### Eager Loading Relationships
+
+```php
+// Efficiently load appointments with related data
+$appointments = Appointment::with([
+    'patient' => function ($query) {
+        $query->select('id', 'full_name', 'phone', 'email');
+    },
+    'doctor' => function ($query) {
+        $query->select('id', 'name', 'email');
+    }
+])
+->whereBetween('start_time', [now()->startOfWeek(), now()->endOfWeek()])
+->get();
+```

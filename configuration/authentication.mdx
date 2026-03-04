@@ -1,0 +1,510 @@
+---
+title: Authentication Configuration
+description: Configure Laravel Fortify authentication including login, registration, password reset, email verification, and two-factor authentication
+---
+
+## Overview
+
+Nguhöe EHR uses [Laravel Fortify](https://laravel.com/docs/fortify) as its headless authentication backend. Fortify provides robust authentication features including registration, login, password reset, email verification, and two-factor authentication (2FA).
+
+## Configuration File
+
+Fortify configuration is located at `config/fortify.php`.
+
+## Authentication Guard
+
+<ParamField path="guard" type="string" default="web">
+  The authentication guard Fortify uses for authenticating users. Must correspond to a guard defined in `config/auth.php`.
+  
+  ```php
+  'guard' => 'web',
+  ```
+</ParamField>
+
+## Password Broker
+
+<ParamField path="passwords" type="string" default="users">
+  The password broker used for password reset functionality. Must correspond to a broker defined in `config/auth.php`.
+  
+  ```php
+  'passwords' => 'users',
+  ```
+</ParamField>
+
+## Username Configuration
+
+<ParamField path="username" type="string" default="email">
+  The model attribute used as the username field during authentication.
+  
+  ```php
+  'username' => 'email',
+  ```
+</ParamField>
+
+<ParamField path="email" type="string" default="email">
+  The field name for email in password reset requests.
+  
+  ```php
+  'email' => 'email',
+  ```
+</ParamField>
+
+<ParamField path="lowercase_usernames" type="boolean" default="true">
+  Automatically lowercase usernames before saving to the database. Recommended for email-based authentication.
+  
+  ```php
+  'lowercase_usernames' => true,
+  ```
+</ParamField>
+
+## Routing Configuration
+
+<ParamField path="home" type="string" default="/dashboard">
+  The path users are redirected to after successful authentication or password reset.
+  
+  ```php
+  'home' => '/dashboard',
+  ```
+</ParamField>
+
+<ParamField path="prefix" type="string" default="">
+  URL prefix for all Fortify routes. Leave empty for no prefix.
+  
+  ```php
+  'prefix' => '',  // Routes: /login, /register
+  // 'prefix' => 'auth',  // Routes: /auth/login, /auth/register
+  ```
+</ParamField>
+
+<ParamField path="domain" type="string" default="null">
+  Subdomain for Fortify routes. Useful for multi-tenant applications.
+  
+  ```php
+  'domain' => null,
+  ```
+</ParamField>
+
+<ParamField path="middleware" type="array" default="['web']">
+  Middleware applied to all Fortify routes.
+  
+  ```php
+  'middleware' => ['web'],
+  ```
+</ParamField>
+
+## Rate Limiting
+
+<ParamField path="limiters" type="array">
+  Rate limiters for authentication attempts. Protects against brute-force attacks.
+  
+  ```php
+  'limiters' => [
+      'login' => 'login',              // 5 attempts per minute
+      'two-factor' => 'two-factor',     // 5 attempts per minute
+  ],
+  ```
+</ParamField>
+
+The default rate limiters allow 5 login attempts per minute per IP address and email combination.
+
+## View Routes
+
+<ParamField path="views" type="boolean" default="true">
+  Enable Fortify view routes. Set to `false` for API-only applications or when using Inertia.js.
+  
+  ```php
+  'views' => true,
+  ```
+</ParamField>
+
+## Enabled Features
+
+<ParamField path="features" type="array">
+  Array of enabled Fortify features. Enable or disable authentication features as needed.
+  
+  ```php
+  'features' => [
+      Features::registration(),
+      Features::resetPasswords(),
+      Features::emailVerification(),
+      Features::twoFactorAuthentication([
+          'confirm' => true,
+          'confirmPassword' => true,
+      ]),
+  ],
+  ```
+</ParamField>
+
+### Available Features
+
+#### User Registration
+
+```php
+Features::registration()
+```
+
+Enables new user registration. Users can create accounts through the registration form.
+
+**Routes:**
+- `GET /register` - Registration form
+- `POST /register` - Process registration
+
+#### Password Reset
+
+```php
+Features::resetPasswords()
+```
+
+Enables password reset via email.
+
+**Routes:**
+- `GET /forgot-password` - Request password reset
+- `POST /forgot-password` - Send reset link
+- `GET /reset-password/{token}` - Reset password form
+- `POST /reset-password` - Process password reset
+
+**Configuration in `config/auth.php`:**
+
+```php
+'passwords' => [
+    'users' => [
+        'provider' => 'users',
+        'table' => 'password_reset_tokens',
+        'expire' => 60,      // Link expires in 60 minutes
+        'throttle' => 60,    // Wait 60 seconds between requests
+    ],
+],
+```
+
+#### Email Verification
+
+```php
+Features::emailVerification()
+```
+
+Requires users to verify their email address before accessing the application.
+
+**Routes:**
+- `GET /email/verify` - Email verification notice
+- `GET /email/verify/{id}/{hash}` - Verify email
+- `POST /email/verification-notification` - Resend verification email
+
+**Usage:**
+
+Protect routes with the `verified` middleware:
+
+```php
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index']);
+});
+```
+
+#### Two-Factor Authentication (2FA)
+
+```php
+Features::twoFactorAuthentication([
+    'confirm' => true,           // Require password confirmation to enable 2FA
+    'confirmPassword' => true,   // Require password when disabling 2FA
+    // 'window' => 0             // Number of seconds to allow time drift
+]),
+```
+
+Enables TOTP (Time-based One-Time Password) two-factor authentication using apps like Google Authenticator, Authy, or 1Password.
+
+**Routes:**
+- `POST /user/two-factor-authentication` - Enable 2FA
+- `DELETE /user/two-factor-authentication` - Disable 2FA
+- `GET /user/two-factor-qr-code` - Get QR code for setup
+- `GET /user/two-factor-recovery-codes` - Get recovery codes
+- `POST /user/two-factor-recovery-codes` - Regenerate recovery codes
+- `POST /two-factor-challenge` - Verify 2FA code during login
+
+**Options:**
+- `confirm`: Require password confirmation before enabling 2FA
+- `confirmPassword`: Require password confirmation before disabling 2FA
+- `window`: Time drift tolerance in seconds (default: 0)
+
+#### Profile Updates
+
+```php
+Features::updateProfileInformation()
+```
+
+Allow users to update their profile information.
+
+**Routes:**
+- `PUT /user/profile-information` - Update profile
+
+#### Password Updates
+
+```php
+Features::updatePasswords()
+```
+
+Allow users to change their password while authenticated.
+
+**Routes:**
+- `PUT /user/password` - Update password
+
+## Authentication Configuration
+
+Authentication guards and providers are configured in `config/auth.php`.
+
+### Default Guard
+
+```php
+'defaults' => [
+    'guard' => env('AUTH_GUARD', 'web'),
+    'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
+],
+```
+
+### Web Guard
+
+```php
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
+    ],
+],
+```
+
+Uses session-based authentication for web requests.
+
+### User Provider
+
+```php
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => env('AUTH_MODEL', App\Models\User::class),
+    ],
+],
+```
+
+Uses Eloquent ORM to retrieve users from the database.
+
+## Session Configuration
+
+Session settings control user session behavior. Configure in `.env` and `config/session.php`.
+
+<ParamField path="SESSION_DRIVER" type="string" default="database">
+  Session storage driver.
+  
+  **Options:** `file`, `cookie`, `database`, `memcached`, `redis`
+  
+  ```bash
+  SESSION_DRIVER=database
+  ```
+</ParamField>
+
+<ParamField path="SESSION_LIFETIME" type="integer" default="120">
+  Session lifetime in minutes. Users are logged out after this period of inactivity.
+  
+  ```bash
+  SESSION_LIFETIME=120  # 2 hours
+  ```
+</ParamField>
+
+<ParamField path="SESSION_ENCRYPT" type="boolean" default="false">
+  Encrypt session data before storage.
+  
+  ```bash
+  SESSION_ENCRYPT=false
+  ```
+</ParamField>
+
+### Session Cookie Security
+
+Configured in `config/session.php`:
+
+```php
+'http_only' => env('SESSION_HTTP_ONLY', true),  // Prevent JavaScript access
+'same_site' => env('SESSION_SAME_SITE', 'lax'), // CSRF protection
+'secure' => env('SESSION_SECURE_COOKIE'),       // HTTPS only
+```
+
+## Password Confirmation
+
+<ParamField path="AUTH_PASSWORD_TIMEOUT" type="integer" default="10800">
+  Number of seconds before password confirmation expires. Default is 3 hours (10800 seconds).
+  
+  ```bash
+  AUTH_PASSWORD_TIMEOUT=10800
+  ```
+</ParamField>
+
+Sensitive actions require users to confirm their password. The confirmation is cached for the timeout duration.
+
+## Middleware
+
+Nguhöe EHR uses the following authentication middleware:
+
+### Built-in Middleware
+
+- `auth` - Require authentication
+- `guest` - Allow only unauthenticated users
+- `verified` - Require email verification
+
+### Usage Examples
+
+```php
+// Require authentication
+Route::middleware(['auth'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index']);
+});
+
+// Require authentication and email verification
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index']);
+});
+
+// Guest only (login, register)
+Route::middleware(['guest'])->group(function () {
+    // Fortify handles these routes automatically
+});
+```
+
+## Security Best Practices
+
+### Production Checklist
+
+- Enable HTTPS and set `SESSION_SECURE_COOKIE=true`
+- Set appropriate `SESSION_LIFETIME` based on security requirements
+- Enable email verification for new registrations
+- Encourage or require two-factor authentication for privileged users
+- Use strong password requirements (configured in User model)
+- Monitor failed login attempts
+- Regularly review and revoke old sessions
+
+### Password Requirements
+
+Configure password validation in your registration form request:
+
+```php
+use Illuminate\Validation\Rules\Password;
+
+'password' => [
+    'required',
+    'string',
+    Password::min(8)
+        ->mixedCase()
+        ->numbers()
+        ->symbols()
+        ->uncompromised(),
+    'confirmed'
+],
+```
+
+### Rate Limiting
+
+Fortify includes built-in rate limiting for authentication attempts:
+
+- **Login:** 5 attempts per minute per IP + email combination
+- **Two-factor:** 5 attempts per minute per IP + email combination
+- **Password reset:** 60 seconds between requests (configured in `config/auth.php`)
+
+### Session Security
+
+Recommended session settings for production:
+
+```bash
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+SESSION_SECURE_COOKIE=true  # HTTPS only
+```
+
+## Email Notifications
+
+Fortify sends emails for various authentication events:
+
+### Password Reset Email
+
+Sent when users request password reset. Configure mail settings in `.env`:
+
+```bash
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=your-username
+MAIL_PASSWORD=your-password
+MAIL_FROM_ADDRESS=noreply@ehr.example.com
+MAIL_FROM_NAME="Nguhöe EHR"
+```
+
+### Email Verification Email
+
+Sent automatically when email verification is enabled and a user registers.
+
+## Customization
+
+### Custom Login Logic
+
+Register custom logic in `app/Providers/FortifyServiceProvider.php`:
+
+```php
+use Laravel\Fortify\Fortify;
+
+Fortify::authenticateUsing(function (Request $request) {
+    $user = User::where('email', $request->email)->first();
+
+    if ($user && Hash::check($request->password, $user->password)) {
+        return $user;
+    }
+});
+```
+
+### Custom Views
+
+Fortify uses Inertia.js for views in Nguhöe EHR. Views are located in `resources/js/pages/`:
+
+- `login.tsx` - Login page
+- `register.tsx` - Registration page
+- `forgot-password.tsx` - Password reset request
+- `reset-password.tsx` - Password reset form
+- `verify-email.tsx` - Email verification notice
+
+## Troubleshooting
+
+### "Unauthenticated" Error
+
+Ensure routes are protected with `auth` middleware and user is logged in.
+
+### Email Verification Not Working
+
+1. Check that `Features::emailVerification()` is enabled in `config/fortify.php`
+2. Verify mail configuration in `.env`
+3. Ensure routes are protected with `verified` middleware
+4. Check that User model implements `MustVerifyEmail` interface
+
+### Two-Factor Authentication Issues
+
+1. Verify `Features::twoFactorAuthentication()` is enabled
+2. Ensure user has confirmed their password before enabling 2FA
+3. Check time synchronization on server (TOTP is time-sensitive)
+4. Try using recovery codes if TOTP code fails
+
+### Session Expiring Too Quickly
+
+Increase `SESSION_LIFETIME` in `.env`:
+
+```bash
+SESSION_LIFETIME=240  # 4 hours
+```
+
+### Password Reset Emails Not Sending
+
+1. Check mail configuration in `.env`
+2. Test mail connection: `php artisan tinker` then `Mail::raw('Test', fn($msg) => $msg->to('test@example.com')->subject('Test'));`
+3. Check logs in `storage/logs/laravel.log`
+4. Verify `MAIL_FROM_ADDRESS` is set
+
+## Related Documentation
+
+- [Environment Configuration](/configuration/environment)
+- [Roles & Permissions](/configuration/roles-permissions)
+- [Laravel Fortify Documentation](https://laravel.com/docs/fortify)

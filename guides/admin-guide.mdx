@@ -1,0 +1,438 @@
+---
+title: Administrator Guide
+description: Complete guide for system administrators managing Nguhöe EHR
+---
+
+# Administrator Guide
+
+As an administrator, you have full access to all system features including staff management, system configuration, reports, and complete CRUD permissions across all modules.
+
+## Access Level
+
+Administrators can:
+- Manage all staff members (doctors and receptionists)
+- Access all patient records
+- Create and manage consultations
+- View appointments across all doctors
+- Access financial reports and analytics
+- Process payments
+- Configure system settings
+- Delete any records (exclusive permission)
+
+---
+
+## Staff Management
+
+Manage doctors and receptionists in your organization.
+
+### Creating Staff Members
+
+<Steps>
+  <Step title="Navigate to Staff Management">
+    Click **Staff** in the main navigation menu to access `/staff`
+    
+    You'll see a list of all doctors and receptionists with their assigned roles.
+  </Step>
+  
+  <Step title="Add New Staff Member">
+    Click the **Create Staff** button in the top right
+    
+    **Screenshot: Staff listing page with "Create Staff" button highlighted**
+  </Step>
+  
+  <Step title="Fill in Staff Details">
+    Complete the registration form with:
+    - **Name**: Full name of the staff member
+    - **Email**: Must be unique in the system
+    - **Password**: Minimum 8 characters (must be confirmed)
+    - **Role**: Select either `Doctor` or `Receptionist`
+    
+    **Screenshot: Staff creation form showing all fields**
+  </Step>
+  
+  <Step title="Submit and Verify">
+    Click **Create** to register the staff member
+    
+    You'll be redirected back to the staff list with a success message confirming registration.
+  </Step>
+</Steps>
+
+### Editing Staff Members
+
+<Steps>
+  <Step title="Locate the Staff Member">
+    From the staff list at `/staff`, find the staff member you want to edit
+  </Step>
+  
+  <Step title="Open Edit Form">
+    Click the **Edit** button next to their name
+    
+    <Note>You cannot edit administrator accounts through this interface</Note>
+  </Step>
+  
+  <Step title="Update Information">
+    Modify any of the following:
+    - Name
+    - Email address
+    - Password (leave blank to keep current password)
+    - Role (switch between doctor and receptionist)
+  </Step>
+  
+  <Step title="Save Changes">
+    Click **Update** to save the changes
+    
+    The staff member's role will be synchronized automatically.
+  </Step>
+</Steps>
+
+### Deleting Staff Members
+
+<Warning>
+Deleting a staff member is permanent and cannot be undone. Ensure you have proper backups before deletion.
+</Warning>
+
+<Steps>
+  <Step title="Find the Staff Member">
+    Navigate to `/staff` and locate the staff member
+  </Step>
+  
+  <Step title="Delete Action">
+    Click the **Delete** button next to their name
+  </Step>
+  
+  <Step title="Confirm Deletion">
+    Confirm the deletion when prompted
+    
+    <Note>Administrator accounts cannot be deleted through this interface</Note>
+  </Step>
+</Steps>
+
+---
+
+## Patient Management
+
+Administrators have full CRUD access to patient records.
+
+### Registering New Patients
+
+<Steps>
+  <Step title="Access Patient Module">
+    Navigate to **Patients** from the main menu
+  </Step>
+  
+  <Step title="Create New Patient">
+    Click **New Patient** button
+    
+    Complete the patient registration form with:
+    - Full name
+    - Document ID (national ID or similar)
+    - Birth date
+    - Gender
+    - Contact information (phone, email)
+    - Address
+    - Medical history (antecedents, allergies, chronic diseases)
+    - Current medications
+  </Step>
+  
+  <Step title="Submit Registration">
+    Click **Save** to create the patient record
+  </Step>
+</Steps>
+
+### Searching Patients
+
+Use the search bar on the patients page to search by:
+- Full name
+- Document ID
+- Phone number
+- Email address
+
+**Screenshot: Patient search interface with search results**
+
+### Viewing Patient Records
+
+Click on any patient name to view their complete medical record including:
+- Personal information
+- Consultation history with doctors
+- Uploaded attachments and documents
+- Prescriptions
+- Payment history
+
+### Deleting Patients
+
+<Warning>
+Only administrators can delete patient records. This action is irreversible.
+</Warning>
+
+From the patient detail page, click the **Delete** button and confirm the action.
+
+---
+
+## Appointment Management
+
+View and manage appointments across all doctors.
+
+### Viewing All Appointments
+
+<Steps>
+  <Step title="Navigate to Appointments">
+    Click **Appointments** in the main navigation
+  </Step>
+  
+  <Step title="Filter Appointments">
+    Use the filters to narrow down appointments:
+    - **Doctor**: Filter by specific doctor
+    - **Date**: Filter by appointment date
+    
+    **Screenshot: Appointment listing with filter options**
+  </Step>
+</Steps>
+
+### Creating Appointments
+
+<Steps>
+  <Step title="Start New Appointment">
+    Click **New Appointment** from the appointments page
+  </Step>
+  
+  <Step title="Select Patient and Doctor">
+    - Choose the patient from the dropdown
+    - Select the doctor
+  </Step>
+  
+  <Step title="Set Time">
+    - Pick the start date and time
+    - Set the end time (appointments are typically 30 minutes)
+    - Add appointment reason and any notes
+  </Step>
+  
+  <Step title="Confirm Booking">
+    Click **Schedule Appointment** to create it
+  </Step>
+</Steps>
+
+### Updating Appointment Status
+
+Update appointment status between:
+- **Scheduled**: Initial state
+- **Confirmed**: Patient confirmed attendance
+- **Completed**: Patient attended and was seen
+- **Cancelled**: Appointment was cancelled
+- **No Show**: Patient did not attend
+
+---
+
+## Consultation Access
+
+Administrators can create and view all consultations.
+
+### Creating Consultations
+
+<Steps>
+  <Step title="Initiate Consultation">
+    From a patient's record or appointment, click **New Consultation**
+  </Step>
+  
+  <Step title="Record Vital Signs">
+    Enter the patient's vital signs:
+    - Weight (kg)
+    - Height (cm)
+    - Temperature (°C)
+    - Blood Pressure (systolic/diastolic)
+    - Heart Rate (bpm)
+    - Respiratory Rate
+    - Oxygen Saturation (%)
+  </Step>
+  
+  <Step title="Document Clinical Information">
+    - Reason for visit
+    - Clinical findings and examination notes
+    - Diagnosis
+    - Treatment plan
+  </Step>
+  
+  <Step title="Add Prescription (Optional)">
+    If prescribing medication:
+    - Add each medication with dosage
+    - Specify frequency and duration
+    - Include special instructions
+  </Step>
+  
+  <Step title="Record Payment (Optional)">
+    If payment is collected during consultation:
+    - Enter payment amount
+    - Select payment method (cash, card, transfer)
+  </Step>
+  
+  <Step title="Save Consultation">
+    Click **Save Consultation** to complete the record
+  </Step>
+</Steps>
+
+---
+
+## Financial Reports
+
+Access comprehensive financial analytics and reports.
+
+### Accessing Reports
+
+<Steps>
+  <Step title="Navigate to Reports">
+    Click **Reports** in the main navigation to access `/reports`
+    
+    <Note>Only administrators have access to this section</Note>
+  </Step>
+  
+  <Step title="View Dashboard Metrics">
+    The reports dashboard displays:
+    - **Total Revenue (Month)**: Sum of all paid invoices this month
+    - **Payments Today**: Number of payments received today
+    - **Revenue Today**: Total amount collected today
+    - **Pending Amount**: Outstanding unpaid invoices
+    
+    **Screenshot: Reports dashboard showing all key metrics**
+  </Step>
+  
+  <Step title="Analyze Revenue Trends">
+    View the **Daily Revenue Chart** showing payment trends over the last 30 days
+    
+    This helps identify:
+    - Peak revenue days
+    - Revenue patterns
+    - Month-over-month comparisons
+  </Step>
+  
+  <Step title="Review Payment Methods">
+    Check the **Revenue by Payment Method** breakdown showing:
+    - Cash payments
+    - Card payments
+    - Bank transfers
+    
+    Use this data for reconciliation and payment processing analysis.
+  </Step>
+</Steps>
+
+---
+
+## Payment Processing
+
+Manage patient payments and billing.
+
+### Viewing Payment History
+
+Navigate to **Payments** to see:
+- All payment transactions
+- Associated patient names
+- Related consultations
+- Payment methods and status
+
+### Recording Payments
+
+<Steps>
+  <Step title="Access Payment Module">
+    Navigate to **Payments** from the main menu
+  </Step>
+  
+  <Step title="Create New Payment">
+    Click **New Payment** button
+  </Step>
+  
+  <Step title="Enter Payment Details">
+    - Select the patient
+    - Link to consultation (if applicable)
+    - Enter payment amount
+    - Choose payment method (cash, card, transfer)
+    - Set status (paid, pending, cancelled)
+    - Add any notes
+  </Step>
+  
+  <Step title="Submit Payment">
+    Click **Save** to record the payment
+  </Step>
+</Steps>
+
+### Searching Payments
+
+Use the search bar to find payments by patient name.
+
+---
+
+## System Configuration
+
+### Profile Settings
+
+Manage your administrator account:
+- Update your name and email
+- Change password
+- Enable two-factor authentication for enhanced security
+
+Access via the profile icon in the top right navigation.
+
+### Two-Factor Authentication
+
+<Steps>
+  <Step title="Enable 2FA">
+    Go to Settings > Two-Factor Authentication
+  </Step>
+  
+  <Step title="Scan QR Code">
+    Use an authenticator app (Google Authenticator, Authy) to scan the QR code
+  </Step>
+  
+  <Step title="Verify Setup">
+    Enter the 6-digit code from your authenticator app to confirm
+  </Step>
+  
+  <Step title="Save Recovery Codes">
+    Store the recovery codes in a safe place
+    
+    <Warning>Recovery codes are needed if you lose access to your authenticator device</Warning>
+  </Step>
+</Steps>
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Backups" icon="database">
+    Ensure regular database backups are configured and tested for disaster recovery
+  </Card>
+  
+  <Card title="Staff Training" icon="graduation-cap">
+    Provide proper training to all staff members on their respective roles and system usage
+  </Card>
+  
+  <Card title="Access Control" icon="lock">
+    Regularly review staff access levels and remove accounts for departed employees
+  </Card>
+  
+  <Card title="Data Privacy" icon="shield-halved">
+    Follow HIPAA and local regulations for patient data protection and privacy
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Cannot Delete Staff Member">
+    Ensure the staff member is not an administrator. Admin accounts cannot be deleted through the staff management interface.
+  </Accordion>
+  
+  <Accordion title="Reports Not Loading">
+    Verify you are logged in with an administrator account. Reports are only accessible to admins.
+  </Accordion>
+  
+  <Accordion title="Patient Records Not Showing">
+    Check if the patient record was soft-deleted. Contact technical support to restore if needed.
+  </Accordion>
+</AccordionGroup>
+
+## Need Help?
+
+If you encounter issues not covered in this guide, contact your system administrator or technical support team.

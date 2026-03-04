@@ -1,0 +1,375 @@
+---
+title: Payments
+description: Track and manage patient payments linked to consultations with status management
+icon: credit-card
+---
+
+## Overview
+
+The Payments module manages financial transactions in Nguhöe EHR. Payments are typically linked to consultations but can also be created independently. The module supports multiple payment methods and status tracking.
+
+<Note>
+Payment management is restricted to Admin and Receptionist roles. These users handle billing and financial record-keeping.
+</Note>
+
+## Payment Data Model
+
+### Core Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `patient_id` | foreign key | Reference to patient |
+| `consultation_id` | foreign key (nullable) | Optional link to consultation |
+| `amount` | decimal(10,2) | Payment amount |
+| `payment_method` | string | Method of payment |
+| `status` | string | Payment status |
+| `notes` | text | Additional payment notes |
+
+### Payment Methods
+
+<Tabs>
+  <Tab title="cash">
+    Cash payment - most common for clinic visits
+  </Tab>
+  <Tab title="card">
+    Credit or debit card payment
+  </Tab>
+  <Tab title="transfer">
+    Bank transfer or wire transfer
+  </Tab>
+</Tabs>
+
+### Payment Statuses
+
+<Tabs>
+  <Tab title="paid">
+    Payment has been received (default)
+  </Tab>
+  <Tab title="pending">
+    Payment is expected but not yet received
+  </Tab>
+  <Tab title="cancelled">
+    Payment was cancelled or voided
+  </Tab>
+</Tabs>
+
+## Creating Payments
+
+### During Consultation
+
+Payments are typically created automatically when a consultation includes payment information:
+
+```php
+// During consultation creation (ConsultationController.php:66-67)
+'payment_amount' => 'nullable|numeric|min:0',
+'payment_method' => 'nullable|string|in:cash,card,transfer',
+```
+
+The `CreateConsultationAction` handles automatic payment creation:
+- Creates payment record linked to consultation
+- Sets status to 'paid' by default
+- Links to patient and consultation
+
+### Independent Payment Creation
+
+Receptionists and admins can create payments independently through the payments interface:
+
+**Route:** `payments.store` → `PaymentController@store`  
+**Action:** `CreatePaymentAction`  
+**Endpoint:** `POST /payments`
+
+```php
+// Payment validation (PaymentController.php:38-45)
+$validated = $request->validate([
+    'patient_id' => 'required|exists:patients,id',
+    'consultation_id' => 'nullable|exists:consultations,id',
+    'amount' => 'required|numeric|min:0',
+    'payment_method' => 'required|string|in:cash,card,transfer',
+    'status' => 'required|string|in:paid,pending,cancelled',
+    'notes' => 'nullable|string',
+]);
+
+$action->execute($validated);
+```
+
+<Info>
+Payments don't require a consultation link - useful for deposits, general charges, or administrative fees.
+</Info>
+
+## Viewing and Filtering Payments
+
+### Payments List
+
+Access the complete payment history with search and filtering:
+
+**Route:** `payments.index` → `PaymentController@index`  
+**Endpoint:** `GET /payments`
+
+```php
+// Load payments with relationships (PaymentController.php:18)
+$query = Payment::with(['patient', 'consultation'])->latest();
+
+// Search by patient name (PaymentController.php:20-25)
+if ($request->has('search')) {
+    $search = $request->get('search');
+    $query->whereHas('patient', function ($q) use ($search) {
+        $q->where('full_name', 'like', "%{$search}%");
+    });
+}
+```
+
+The payments list displays:
+- Patient name (searchable)
+- Consultation reference (if linked)
+- Amount
+- Payment method
+- Status
+- Date
+- Notes
+
+### Payment Search
+
+Search payments by patient name to quickly find specific transactions:
+
+```php
+// Example: Search for payments from "Juan Perez"
+GET /payments?search=Juan%20Perez
+```
+
+## Billing Workflows
+
+### Standard Consultation Payment
+
+<Steps>
+  <Step title="Doctor Creates Consultation">
+    Doctor completes clinical documentation
+  </Step>
+  <Step title="Add Payment Info">
+    Doctor or system adds payment amount and method
+  </Step>
+  <Step title="Auto-Create Payment">
+    Payment is automatically created and linked
+  </Step>
+  <Step title="Receipt Generation">
+    System can generate payment receipt
+  </Step>
+</Steps>
+
+### Walk-in Payment
+
+<Steps>
+  <Step title="Receptionist Opens Payments">
+    Access payments module
+  </Step>
+  <Step title="Create New Payment">
+    Click create payment
+  </Step>
+  <Step title="Select Patient">
+    Choose patient from list
+  </Step>
+  <Step title="Enter Details">
+    Add amount, method, and notes
+  </Step>
+  <Step title="Submit">
+    Create payment record
+  </Step>
+</Steps>
+
+### Pending Payment Follow-up
+
+<Steps>
+  <Step title="Create as Pending">
+    Mark payment status as 'pending'
+  </Step>
+  <Step title="Patient Pays Later">
+    Patient returns to complete payment
+  </Step>
+  <Step title="Update Status">
+    Change status from 'pending' to 'paid'
+  </Step>
+  <Step title="Add Payment Method">
+    Record how payment was received
+  </Step>
+</Steps>
+
+## Payment Notes
+
+The notes field supports additional context:
+
+```php
+'notes' => 'Pago parcial - saldo pendiente $200',
+'notes' => 'Incluye estudios de laboratorio',
+'notes' => 'Descuento por tercera edad aplicado',
+'notes' => 'Transferencia ref: 123456789',
+```
+
+Use notes for:
+- Payment references
+- Partial payment tracking
+- Discounts or adjustments
+- Special arrangements
+- Receipt numbers
+
+## Relationships
+
+```php
+// Payment.php relationships
+
+// Belongs to Patient
+public function patient(): BelongsTo
+{
+    return $this->belongsTo(Patient::class);
+}
+
+// Belongs to Consultation (optional)
+public function consultation(): BelongsTo
+{
+    return $this->belongsTo(Consultation::class);
+}
+```
+
+<Info>
+The consultation relationship uses `nullable` constraint, allowing payments without consultation links (database/migrations/*_payments_table.php:17).
+</Info>
+
+## Access Control
+
+<AccordionGroup>
+  <Accordion title="Admin">
+    - View all payments
+    - Create new payments
+    - Update payment status
+    - Search and filter payments
+    - Full financial access
+  </Accordion>
+  
+  <Accordion title="Receptionist">
+    - View all payments
+    - Create new payments
+    - Update payment status
+    - Search and filter payments
+    - Primary role for payment management
+  </Accordion>
+  
+  <Accordion title="Doctor">
+    - Can add payment info during consultation creation
+    - Cannot access payments module directly
+  </Accordion>
+  
+  <Accordion title="Patient">
+    No access to payment management (view-only access may be implemented)
+  </Accordion>
+</AccordionGroup>
+
+## Database Schema
+
+```sql
+CREATE TABLE payments (
+    id BIGINT PRIMARY KEY,
+    patient_id BIGINT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    consultation_id BIGINT REFERENCES consultations(id) ON DELETE SET NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(255) NOT NULL,
+    status VARCHAR(255) DEFAULT 'paid',
+    notes TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+```
+
+<Info>
+When a consultation is deleted, the payment remains but the `consultation_id` is set to NULL (ON DELETE SET NULL).
+</Info>
+
+## Common Scenarios
+
+### Standard Consultation Fee
+
+```php
+[
+    'patient_id' => 123,
+    'consultation_id' => 456,
+    'amount' => 500.00,
+    'payment_method' => 'cash',
+    'status' => 'paid',
+    'notes' => 'Consulta general',
+]
+```
+
+### Partial Payment
+
+```php
+[
+    'patient_id' => 123,
+    'consultation_id' => 456,
+    'amount' => 300.00,
+    'payment_method' => 'cash',
+    'status' => 'paid',
+    'notes' => 'Pago parcial - saldo pendiente $200',
+]
+```
+
+### Administrative Fee
+
+```php
+[
+    'patient_id' => 123,
+    'consultation_id' => null,
+    'amount' => 50.00,
+    'payment_method' => 'card',
+    'status' => 'paid',
+    'notes' => 'Costo de expedición de récipe duplicado',
+]
+```
+
+### Pending Payment
+
+```php
+[
+    'patient_id' => 123,
+    'consultation_id' => 456,
+    'amount' => 800.00,
+    'payment_method' => 'transfer',
+    'status' => 'pending',
+    'notes' => 'Esperando confirmación de transferencia bancaria',
+]
+```
+
+## Reporting and Analytics
+
+Payment data supports financial reporting:
+
+- Daily/weekly/monthly revenue
+- Payment method distribution
+- Pending payments tracking
+- Patient payment history
+- Consultation revenue analysis
+
+<Info>
+The reports module uses payment data for financial dashboards and analytics (routes/web.php:54).
+</Info>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Link to Consultations" icon="link">
+    Always link payments to consultations when applicable for tracking
+  </Card>
+  
+  <Card title="Accurate Status" icon="circle-check">
+    Update payment status promptly when pending payments are received
+  </Card>
+  
+  <Card title="Clear Notes" icon="note">
+    Add meaningful notes for reference and audit purposes
+  </Card>
+  
+  <Card title="Consistent Methods" icon="money-bill">
+    Use standardized payment method codes for reporting
+  </Card>
+</CardGroup>
+
+<Warning>
+Payments use soft deletes to maintain financial audit trails. Never permanently delete payment records.
+</Warning>

@@ -1,0 +1,643 @@
+---
+title: Environment Configuration
+description: Configure environment variables for Nguhöe EHR across different deployment environments
+---
+
+## Overview
+
+Nguhöe EHR uses environment variables to configure application behavior across different environments. All configuration is managed through the `.env` file, which should never be committed to version control.
+
+## Getting Started
+
+Copy the example environment file to create your configuration:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+## Application Settings
+
+<ParamField path="APP_NAME" type="string" default="Laravel">
+  The name of your application. Used in emails, notifications, and UI elements.
+  
+  ```bash
+  APP_NAME="Nguhöe EHR"
+  ```
+</ParamField>
+
+<ParamField path="APP_ENV" type="string" default="local">
+  The application environment. Determines configuration behavior and error reporting.
+  
+  **Options:** `local`, `staging`, `production`
+  
+  ```bash
+  APP_ENV=production
+  ```
+</ParamField>
+
+<ParamField path="APP_KEY" type="string" required>
+  Application encryption key. Auto-generated with `php artisan key:generate`. Required for session and data encryption.
+  
+  ```bash
+  APP_KEY=base64:randomgeneratedkeyhere
+  ```
+</ParamField>
+
+<ParamField path="APP_DEBUG" type="boolean" default="true">
+  Enable detailed error messages and stack traces. **Must be `false` in production.**
+  
+  ```bash
+  APP_DEBUG=false  # Production
+  APP_DEBUG=true   # Development
+  ```
+</ParamField>
+
+<ParamField path="APP_URL" type="string" default="http://localhost">
+  The base URL of your application. Used for generating links and asset URLs.
+  
+  ```bash
+  APP_URL=https://ehr.example.com
+  ```
+</ParamField>
+
+<ParamField path="APP_LOCALE" type="string" default="en">
+  Default application language.
+  
+  ```bash
+  APP_LOCALE=en
+  ```
+</ParamField>
+
+<ParamField path="APP_FALLBACK_LOCALE" type="string" default="en">
+  Fallback language when the current language is unavailable.
+  
+  ```bash
+  APP_FALLBACK_LOCALE=en
+  ```
+</ParamField>
+
+<ParamField path="APP_FAKER_LOCALE" type="string" default="en_US">
+  Locale for generating fake data in development and testing.
+  
+  ```bash
+  APP_FAKER_LOCALE=en_US
+  ```
+</ParamField>
+
+<ParamField path="APP_MAINTENANCE_DRIVER" type="string" default="file">
+  Storage driver for maintenance mode state.
+  
+  **Options:** `file`, `database`
+  
+  ```bash
+  APP_MAINTENANCE_DRIVER=file
+  ```
+</ParamField>
+
+## Security Settings
+
+<ParamField path="BCRYPT_ROUNDS" type="integer" default="12">
+  Number of bcrypt hashing rounds for password encryption. Higher values increase security but require more CPU.
+  
+  **Recommended:** `12` for production
+  
+  ```bash
+  BCRYPT_ROUNDS=12
+  ```
+</ParamField>
+
+## Database Configuration
+
+<ParamField path="DB_CONNECTION" type="string" default="sqlite">
+  Database driver to use.
+  
+  **Options:** `sqlite`, `mysql`, `mariadb`, `pgsql`, `sqlsrv`
+  
+  ```bash
+  DB_CONNECTION=mysql
+  ```
+</ParamField>
+
+<ParamField path="DB_HOST" type="string" default="127.0.0.1">
+  Database server hostname or IP address.
+  
+  ```bash
+  DB_HOST=127.0.0.1
+  ```
+</ParamField>
+
+<ParamField path="DB_PORT" type="integer" default="3306">
+  Database server port.
+  
+  **Defaults:** MySQL/MariaDB: `3306`, PostgreSQL: `5432`, SQL Server: `1433`
+  
+  ```bash
+  DB_PORT=3306
+  ```
+</ParamField>
+
+<ParamField path="DB_DATABASE" type="string" default="laravel">
+  Name of the database. For SQLite, this is the path to the database file.
+  
+  ```bash
+  # MySQL/PostgreSQL
+  DB_DATABASE=nguhoe_ehr
+  
+  # SQLite
+  DB_DATABASE=/path/to/database/database.sqlite
+  ```
+</ParamField>
+
+<ParamField path="DB_USERNAME" type="string" default="root">
+  Database username for authentication.
+  
+  ```bash
+  DB_USERNAME=nguhoe_user
+  ```
+</ParamField>
+
+<ParamField path="DB_PASSWORD" type="string">
+  Database password for authentication.
+  
+  ```bash
+  DB_PASSWORD=secure_password_here
+  ```
+</ParamField>
+
+## Session Configuration
+
+<ParamField path="SESSION_DRIVER" type="string" default="database">
+  Session storage driver.
+  
+  **Options:** `file`, `cookie`, `database`, `memcached`, `redis`, `array`
+  
+  **Recommended:** `database` for production
+  
+  ```bash
+  SESSION_DRIVER=database
+  ```
+</ParamField>
+
+<ParamField path="SESSION_LIFETIME" type="integer" default="120">
+  Session lifetime in minutes. Users will be logged out after this period of inactivity.
+  
+  ```bash
+  SESSION_LIFETIME=120  # 2 hours
+  ```
+</ParamField>
+
+<ParamField path="SESSION_ENCRYPT" type="boolean" default="false">
+  Encrypt session data before storage. Adds security but slight performance overhead.
+  
+  ```bash
+  SESSION_ENCRYPT=false
+  ```
+</ParamField>
+
+<ParamField path="SESSION_PATH" type="string" default="/">
+  Cookie path for session. Usually the root path.
+  
+  ```bash
+  SESSION_PATH=/
+  ```
+</ParamField>
+
+<ParamField path="SESSION_DOMAIN" type="string">
+  Cookie domain for session. Leave null for current domain.
+  
+  ```bash
+  SESSION_DOMAIN=null
+  ```
+</ParamField>
+
+## Cache Configuration
+
+<ParamField path="CACHE_STORE" type="string" default="database">
+  Default cache storage driver.
+  
+  **Options:** `file`, `database`, `memcached`, `redis`, `array`
+  
+  ```bash
+  CACHE_STORE=database
+  ```
+</ParamField>
+
+<ParamField path="CACHE_PREFIX" type="string">
+  Prefix for cache keys to avoid collisions with other applications.
+  
+  ```bash
+  CACHE_PREFIX=nguhoe_cache_
+  ```
+</ParamField>
+
+## Queue Configuration
+
+<ParamField path="QUEUE_CONNECTION" type="string" default="database">
+  Queue driver for background job processing.
+  
+  **Options:** `sync`, `database`, `redis`, `sqs`, `beanstalkd`
+  
+  **Recommended:** `database` for production, `sync` for local development
+  
+  ```bash
+  QUEUE_CONNECTION=database
+  ```
+</ParamField>
+
+## Mail Configuration
+
+<ParamField path="MAIL_MAILER" type="string" default="log">
+  Mail transport driver.
+  
+  **Options:** `smtp`, `sendmail`, `mailgun`, `ses`, `postmark`, `log`
+  
+  ```bash
+  MAIL_MAILER=smtp
+  ```
+</ParamField>
+
+<ParamField path="MAIL_HOST" type="string" default="127.0.0.1">
+  SMTP server hostname.
+  
+  ```bash
+  MAIL_HOST=smtp.mailtrap.io
+  ```
+</ParamField>
+
+<ParamField path="MAIL_PORT" type="integer" default="2525">
+  SMTP server port.
+  
+  **Common ports:** `25`, `465` (SSL), `587` (TLS), `2525`
+  
+  ```bash
+  MAIL_PORT=587
+  ```
+</ParamField>
+
+<ParamField path="MAIL_USERNAME" type="string">
+  SMTP authentication username.
+  
+  ```bash
+  MAIL_USERNAME=your-smtp-username
+  ```
+</ParamField>
+
+<ParamField path="MAIL_PASSWORD" type="string">
+  SMTP authentication password.
+  
+  ```bash
+  MAIL_PASSWORD=your-smtp-password
+  ```
+</ParamField>
+
+<ParamField path="MAIL_FROM_ADDRESS" type="string" default="hello@example.com">
+  Default sender email address.
+  
+  ```bash
+  MAIL_FROM_ADDRESS=noreply@ehr.example.com
+  ```
+</ParamField>
+
+<ParamField path="MAIL_FROM_NAME" type="string" default="${APP_NAME}">
+  Default sender name.
+  
+  ```bash
+  MAIL_FROM_NAME="Nguhöe EHR"
+  ```
+</ParamField>
+
+<ParamField path="MAIL_SCHEME" type="string">
+  Mail encryption protocol.
+  
+  **Options:** `tls`, `ssl`, `null`
+  
+  ```bash
+  MAIL_SCHEME=tls
+  ```
+</ParamField>
+
+## Redis Configuration
+
+<ParamField path="REDIS_CLIENT" type="string" default="phpredis">
+  Redis client library.
+  
+  **Options:** `phpredis`, `predis`
+  
+  ```bash
+  REDIS_CLIENT=phpredis
+  ```
+</ParamField>
+
+<ParamField path="REDIS_HOST" type="string" default="127.0.0.1">
+  Redis server hostname.
+  
+  ```bash
+  REDIS_HOST=127.0.0.1
+  ```
+</ParamField>
+
+<ParamField path="REDIS_PASSWORD" type="string" default="null">
+  Redis authentication password.
+  
+  ```bash
+  REDIS_PASSWORD=your_redis_password
+  ```
+</ParamField>
+
+<ParamField path="REDIS_PORT" type="integer" default="6379">
+  Redis server port.
+  
+  ```bash
+  REDIS_PORT=6379
+  ```
+</ParamField>
+
+## Logging Configuration
+
+<ParamField path="LOG_CHANNEL" type="string" default="stack">
+  Default logging channel.
+  
+  **Options:** `stack`, `single`, `daily`, `slack`, `syslog`, `errorlog`
+  
+  ```bash
+  LOG_CHANNEL=stack
+  ```
+</ParamField>
+
+<ParamField path="LOG_STACK" type="string" default="single">
+  Channels to include in the stack.
+  
+  ```bash
+  LOG_STACK=single
+  ```
+</ParamField>
+
+<ParamField path="LOG_LEVEL" type="string" default="debug">
+  Minimum log level to record.
+  
+  **Options:** `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`
+  
+  **Recommended:** `error` for production, `debug` for development
+  
+  ```bash
+  LOG_LEVEL=error  # Production
+  LOG_LEVEL=debug  # Development
+  ```
+</ParamField>
+
+<ParamField path="LOG_DEPRECATIONS_CHANNEL" type="string" default="null">
+  Channel for logging deprecation warnings.
+  
+  ```bash
+  LOG_DEPRECATIONS_CHANNEL=null
+  ```
+</ParamField>
+
+## File Storage Configuration
+
+<ParamField path="FILESYSTEM_DISK" type="string" default="local">
+  Default filesystem disk for file storage.
+  
+  **Options:** `local`, `public`, `s3`
+  
+  ```bash
+  FILESYSTEM_DISK=local
+  ```
+</ParamField>
+
+## Broadcasting Configuration
+
+<ParamField path="BROADCAST_CONNECTION" type="string" default="log">
+  Broadcasting driver for real-time events.
+  
+  **Options:** `log`, `pusher`, `ably`, `redis`, `null`
+  
+  ```bash
+  BROADCAST_CONNECTION=log
+  ```
+</ParamField>
+
+## AWS Configuration
+
+<ParamField path="AWS_ACCESS_KEY_ID" type="string">
+  AWS access key ID for S3, SES, or other AWS services.
+  
+  ```bash
+  AWS_ACCESS_KEY_ID=your_access_key
+  ```
+</ParamField>
+
+<ParamField path="AWS_SECRET_ACCESS_KEY" type="string">
+  AWS secret access key.
+  
+  ```bash
+  AWS_SECRET_ACCESS_KEY=your_secret_key
+  ```
+</ParamField>
+
+<ParamField path="AWS_DEFAULT_REGION" type="string" default="us-east-1">
+  AWS region for services.
+  
+  ```bash
+  AWS_DEFAULT_REGION=us-east-1
+  ```
+</ParamField>
+
+<ParamField path="AWS_BUCKET" type="string">
+  S3 bucket name for file storage.
+  
+  ```bash
+  AWS_BUCKET=nguhoe-ehr-files
+  ```
+</ParamField>
+
+## Vite Configuration
+
+<ParamField path="VITE_APP_NAME" type="string" default="${APP_NAME}">
+  Application name exposed to the frontend build process.
+  
+  ```bash
+  VITE_APP_NAME="${APP_NAME}"
+  ```
+</ParamField>
+
+## Environment-Specific Configurations
+
+### Local Development
+
+```bash
+APP_NAME="Nguhöe EHR"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=sqlite
+DB_DATABASE=/path/to/database/database.sqlite
+
+SESSION_DRIVER=file
+CACHE_STORE=file
+QUEUE_CONNECTION=sync
+
+MAIL_MAILER=log
+LOG_LEVEL=debug
+```
+
+### Staging Environment
+
+```bash
+APP_NAME="Nguhöe EHR - Staging"
+APP_ENV=staging
+APP_DEBUG=true
+APP_URL=https://staging.ehr.example.com
+
+DB_CONNECTION=mysql
+DB_HOST=staging-db.example.com
+DB_PORT=3306
+DB_DATABASE=nguhoe_staging
+DB_USERNAME=staging_user
+DB_PASSWORD=secure_password
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=2525
+
+LOG_LEVEL=debug
+```
+
+### Production Environment
+
+```bash
+APP_NAME="Nguhöe EHR"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://ehr.example.com
+
+DB_CONNECTION=mysql
+DB_HOST=production-db.example.com
+DB_PORT=3306
+DB_DATABASE=nguhoe_production
+DB_USERNAME=production_user
+DB_PASSWORD=very_secure_password
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+
+CACHE_STORE=redis
+REDIS_HOST=redis.example.com
+REDIS_PASSWORD=redis_password
+REDIS_PORT=6379
+
+QUEUE_CONNECTION=database
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.sendgrid.net
+MAIL_PORT=587
+MAIL_USERNAME=apikey
+MAIL_PASSWORD=your_sendgrid_api_key
+MAIL_FROM_ADDRESS=noreply@ehr.example.com
+MAIL_FROM_NAME="Nguhöe EHR"
+
+LOG_LEVEL=error
+LOG_CHANNEL=daily
+
+FILESYSTEM_DISK=s3
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=nguhoe-ehr-production
+```
+
+## Security Considerations
+
+<Warning>
+  **Never commit your `.env` file to version control.** It contains sensitive credentials and secrets.
+</Warning>
+
+### Production Security Checklist
+
+- Set `APP_DEBUG=false` to prevent information leakage
+- Use strong, unique values for `APP_KEY`
+- Enable HTTPS and set `APP_URL` to use `https://`
+- Use `BCRYPT_ROUNDS=12` or higher for password hashing
+- Set appropriate `SESSION_LIFETIME` based on your security requirements
+- Use `SESSION_ENCRYPT=true` for sensitive applications
+- Restrict database user permissions to only required operations
+- Use strong database passwords
+- Enable Redis authentication with `REDIS_PASSWORD`
+- Set `LOG_LEVEL=error` to reduce disk usage
+- Review and remove unused AWS credentials
+- Use environment-specific mail settings to prevent accidental emails
+
+### File Permissions
+
+Ensure proper file permissions for the `.env` file:
+
+```bash
+chmod 600 .env
+chown www-data:www-data .env
+```
+
+### Environment Variables in Code
+
+<Note>
+  Never use `env()` helper directly in your application code. Always access environment variables through configuration files using `config()`.
+</Note>
+
+```php
+// ❌ Bad - Direct env() usage
+$appName = env('APP_NAME');
+
+// ✅ Good - Use config()
+$appName = config('app.name');
+```
+
+## Troubleshooting
+
+### Configuration Cache
+
+In production, Laravel caches configuration for performance. After changing `.env`, clear the cache:
+
+```bash
+php artisan config:clear
+php artisan config:cache
+```
+
+### Missing APP_KEY Error
+
+If you see "No application encryption key has been specified":
+
+```bash
+php artisan key:generate
+```
+
+### Database Connection Issues
+
+Verify database credentials and connectivity:
+
+```bash
+php artisan tinker
+>>> DB::connection()->getPdo();
+```
+
+### Mail Testing
+
+Test mail configuration:
+
+```bash
+php artisan tinker
+>>> Mail::raw('Test email', function($msg) { $msg->to('test@example.com')->subject('Test'); });
+```
+
+## Related Documentation
+
+- [Authentication Configuration](/configuration/authentication)
+- [Backup Configuration](/configuration/backup)
+- [Roles & Permissions](/configuration/roles-permissions)

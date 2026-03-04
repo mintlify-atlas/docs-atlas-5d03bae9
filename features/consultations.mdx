@@ -1,0 +1,366 @@
+---
+title: Consultations
+description: Clinical documentation with vital signs, diagnosis, treatment plans, and integration with appointments
+icon: stethoscope
+---
+
+## Overview
+
+The Consultations module is the clinical core of Nguhöe EHR. It captures complete medical encounters including vital signs, clinical findings, diagnosis, and treatment plans. Consultations can be created from appointments and automatically support prescription and payment creation.
+
+<Note>
+Consultations are restricted to Admin and Doctor roles. Only the assigned doctor or an admin can view consultation details.
+</Note>
+
+## Consultation Data Model
+
+### Patient and Appointment Links
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `patient_id` | foreign key | Reference to patient |
+| `doctor_id` | foreign key | Reference to doctor (users table) |
+| `appointment_id` | foreign key (nullable) | Optional link to appointment |
+
+### Vital Signs
+
+All vital signs are optional but recommended for complete clinical documentation:
+
+| Field | Type | Unit | Range |
+|-------|------|------|-------|
+| `weight` | decimal(5,2) | kg | 0-500 |
+| `height` | decimal(5,2) | cm | 0-300 |
+| `temperature` | decimal(4,1) | °C | 30-45 |
+| `bp_systolic` | integer | mmHg | 40-250 |
+| `bp_diastolic` | integer | mmHg | 30-150 |
+| `heart_rate` | integer | bpm | 30-220 |
+| `respiratory_rate` | integer | breaths/min | 8-60 |
+| `oxygen_saturation` | integer | % | 50-100 |
+
+### Clinical Documentation
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `reason_for_visit` | text | Yes | Chief complaint or reason for consultation |
+| `clinical_findings` | text | No | Physical examination findings |
+| `diagnosis` | text | Yes | Medical diagnosis |
+| `treatment_plan` | text | No | Recommended treatment and follow-up |
+
+## Creating a Consultation
+
+### From an Appointment
+
+<Steps>
+  <Step title="Access Appointment">
+    Navigate to the appointment details or calendar
+  </Step>
+  <Step title="Start Consultation">
+    Click "Create Consultation" from the appointment
+  </Step>
+  <Step title="Record Vital Signs">
+    Enter patient's vital signs (weight, BP, temperature, etc.)
+  </Step>
+  <Step title="Document Clinical Findings">
+    Record reason for visit, physical findings, and diagnosis
+  </Step>
+  <Step title="Add Treatment Plan">
+    Specify recommended treatment and follow-up
+  </Step>
+  <Step title="Optional: Add Prescription">
+    Include prescription items and instructions
+  </Step>
+  <Step title="Optional: Record Payment">
+    Add payment information if applicable
+  </Step>
+  <Step title="Save">
+    Submit the consultation
+  </Step>
+</Steps>
+
+**Route:** `consultations.store` → `ConsultationController@store`  
+**Action:** `CreateConsultationAction`
+
+### Direct Consultation (No Appointment)
+
+Consultations can also be created directly for walk-in patients:
+
+**Route:** `consultations.create?patient_id={id}`  
+**Endpoint:** `GET /consultations/create?patient_id=123`
+
+```php
+// Creating a consultation with all components (ConsultationController.php:40-77)
+$validated = $request->validate([
+    'patient_id' => 'required|exists:patients,id',
+    'doctor_id' => 'required|exists:users,id',
+    'appointment_id' => 'nullable|exists:appointments,id',
+    
+    // Vital Signs
+    'weight' => 'nullable|numeric|between:0,500',
+    'height' => 'nullable|numeric|between:0,300',
+    'temperature' => 'nullable|numeric|between:30,45',
+    'bp_systolic' => 'nullable|integer|between:40,250',
+    'bp_diastolic' => 'nullable|integer|between:30,150',
+    'heart_rate' => 'nullable|integer|between:30,220',
+    'respiratory_rate' => 'nullable|integer|between:8,60',
+    'oxygen_saturation' => 'nullable|integer|between:50,100',
+    
+    // Clinical Documentation
+    'reason_for_visit' => 'required|string',
+    'clinical_findings' => 'nullable|string',
+    'diagnosis' => 'required|string',
+    'treatment_plan' => 'nullable|string',
+    
+    // Prescription Data (optional)
+    'prescription_items' => 'nullable|array',
+    'prescription_items.*.medication' => 'required_with:prescription_items|string',
+    'prescription_items.*.dosage' => 'required_with:prescription_items|string',
+    'prescription_items.*.frequency' => 'nullable|string',
+    'prescription_items.*.duration' => 'nullable|string',
+    'prescription_instructions' => 'nullable|string',
+    
+    // Payment Data (optional)
+    'payment_amount' => 'nullable|numeric|min:0',
+    'payment_method' => 'nullable|string|in:cash,card,transfer',
+]);
+```
+
+<Info>
+The doctor_id is automatically set to the authenticated user to prevent impersonation (ConsultationController.php:71).
+</Info>
+
+## Vital Signs Documentation
+
+### Weight and Height
+
+```php
+// Example: Recording basic vitals
+[
+    'weight' => 72.5,  // kg
+    'height' => 175.0, // cm
+]
+```
+
+These allow automatic BMI calculation if needed.
+
+### Blood Pressure
+
+```php
+// Example: Recording blood pressure
+[
+    'bp_systolic' => 120,  // mmHg
+    'bp_diastolic' => 80,  // mmHg
+]
+```
+
+Stored as separate systolic and diastolic values.
+
+### Other Vital Signs
+
+```php
+// Complete vital signs example
+[
+    'temperature' => 37.2,       // °C
+    'heart_rate' => 75,          // bpm
+    'respiratory_rate' => 16,    // breaths per minute
+    'oxygen_saturation' => 98,   // %
+]
+```
+
+## Clinical Documentation Workflow
+
+### Reason for Visit
+
+The chief complaint or presenting problem (required):
+
+```php
+'reason_for_visit' => 'Dolor de cabeza persistente por 3 días'
+```
+
+### Clinical Findings
+
+Physical examination results (optional):
+
+```php
+'clinical_findings' => 'Paciente alerta y orientado. Signos vitales estables. 
+No signos de fiebre. Pupilas reactivas a la luz.'
+```
+
+### Diagnosis
+
+Medical diagnosis (required):
+
+```php
+'diagnosis' => 'Migraña sin aura'
+```
+
+### Treatment Plan
+
+Recommended treatment and follow-up (optional):
+
+```php
+'treatment_plan' => 'Ibuprofeno 400mg cada 8 horas. Reposo en lugar oscuro. 
+Control en 7 días si síntomas persisten.'
+```
+
+## Integrated Prescription Creation
+
+Prescriptions can be created directly from the consultation form:
+
+```php
+// Prescription items structure
+'prescription_items' => [
+    [
+        'medication' => 'Ibuprofeno 400mg',
+        'dosage' => '1 tableta',
+        'frequency' => 'Cada 8 horas',
+        'duration' => '5 días',
+    ],
+    [
+        'medication' => 'Paracetamol 500mg',
+        'dosage' => '1-2 tabletas',
+        'frequency' => 'Cada 6-8 horas si dolor',
+        'duration' => '3 días',
+    ],
+],
+'prescription_instructions' => 'Tomar con alimentos. Evitar alcohol.',
+```
+
+The `CreateConsultationAction` handles automatic prescription creation if items are provided.
+
+## Integrated Payment Recording
+
+Payments can also be recorded during consultation:
+
+```php
+// Payment information
+'payment_amount' => 500.00,
+'payment_method' => 'cash', // or 'card', 'transfer'
+```
+
+The system automatically creates a payment record linked to the consultation.
+
+## Viewing Consultation Details
+
+**Route:** `consultations.show` → `ConsultationController@show`  
+**Access Control:** Only the assigned doctor or admin can view
+
+```php
+// Access validation (ConsultationController.php:84-89)
+if ($user->hasRole('doctor') && $consultation->doctor_id !== $user->id) {
+    abort(403, 'No tienes acceso a esta consulta.');
+}
+
+// Load related data
+$consultation->load(['patient', 'doctor', 'prescription']);
+```
+
+## Relationships
+
+```php
+// Consultation.php relationships
+
+// Belongs to Patient
+public function patient(): BelongsTo
+{
+    return $this->belongsTo(Patient::class);
+}
+
+// Belongs to Doctor
+public function doctor(): BelongsTo
+{
+    return $this->belongsTo(User::class, 'doctor_id');
+}
+
+// Optional: Belongs to Appointment
+public function appointment(): BelongsTo
+{
+    return $this->belongsTo(Appointment::class);
+}
+
+// Has One Prescription
+public function prescription(): HasOne
+{
+    return $this->hasOne(Prescription::class);
+}
+
+// Has One Payment
+public function payment(): HasOne
+{
+    return $this->hasOne(Payment::class);
+}
+```
+
+## Access Control
+
+<AccordionGroup>
+  <Accordion title="Admin">
+    - View all consultations
+    - Create consultations for any doctor
+    - Full access to consultation details
+  </Accordion>
+  
+  <Accordion title="Doctor">
+    - Create consultations (auto-assigned to themselves)
+    - View only their own consultations
+    - Cannot view other doctors' consultations
+  </Accordion>
+  
+  <Accordion title="Other Roles">
+    No access to consultation creation or viewing
+  </Accordion>
+</AccordionGroup>
+
+## Database Schema
+
+```sql
+CREATE TABLE consultations (
+    id BIGINT PRIMARY KEY,
+    patient_id BIGINT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    doctor_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    appointment_id BIGINT REFERENCES appointments(id) ON DELETE SET NULL,
+    
+    -- Vital Signs
+    weight DECIMAL(5,2),
+    height DECIMAL(5,2),
+    temperature DECIMAL(4,1),
+    bp_systolic INTEGER,
+    bp_diastolic INTEGER,
+    heart_rate INTEGER,
+    respiratory_rate INTEGER,
+    oxygen_saturation INTEGER,
+    
+    -- Clinical Documentation
+    reason_for_visit TEXT NOT NULL,
+    clinical_findings TEXT,
+    diagnosis TEXT NOT NULL,
+    treatment_plan TEXT,
+    
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Complete Vital Signs" icon="heartbeat">
+    Record all relevant vital signs for comprehensive documentation
+  </Card>
+  
+  <Card title="Detailed Findings" icon="magnifying-glass">
+    Document clinical findings thoroughly for medical-legal protection
+  </Card>
+  
+  <Card title="Clear Diagnosis" icon="file-medical">
+    Use specific diagnoses rather than symptoms when possible
+  </Card>
+  
+  <Card title="Treatment Plans" icon="prescription">
+    Include clear follow-up instructions and when to return
+  </Card>
+</CardGroup>
+
+<Warning>
+Consultations use soft deletes to maintain medical history integrity. Deleted consultations remain in the database for audit purposes.
+</Warning>

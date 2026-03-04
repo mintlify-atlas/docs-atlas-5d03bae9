@@ -1,0 +1,630 @@
+---
+title: Roles & Permissions
+description: Configure role-based access control using Spatie Laravel Permission package with four user roles
+---
+
+## Overview
+
+Nguhöe EHR implements role-based access control (RBAC) using the [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission) package. The system defines four distinct user roles with specific permissions and access levels.
+
+## User Roles
+
+The system implements four primary roles:
+
+1. **Admin** - Full system access and administrative privileges
+2. **Doctor** - Medical staff with patient care and consultation access
+3. **Receptionist** - Front desk staff managing appointments and payments
+4. **Patient** - Patients with access to their own medical information
+
+## Configuration
+
+Spatie Permission configuration is located at `config/permission.php`.
+
+### Models
+
+<ParamField path="models.permission" type="string" default="Spatie\Permission\Models\Permission">
+  The Eloquent model used for permissions.
+  
+  ```php
+  'permission' => Spatie\Permission\Models\Permission::class,
+  ```
+</ParamField>
+
+<ParamField path="models.role" type="string" default="Spatie\Permission\Models\Role">
+  The Eloquent model used for roles.
+  
+  ```php
+  'role' => Spatie\Permission\Models\Role::class,
+  ```
+</ParamField>
+
+### Database Tables
+
+<ParamField path="table_names" type="array">
+  Database table names for the permission system.
+  
+  ```php
+  'table_names' => [
+      'roles' => 'roles',
+      'permissions' => 'permissions',
+      'model_has_permissions' => 'model_has_permissions',
+      'model_has_roles' => 'model_has_roles',
+      'role_has_permissions' => 'role_has_permissions',
+  ],
+  ```
+</ParamField>
+
+### Column Names
+
+<ParamField path="column_names.model_morph_key" type="string" default="model_id">
+  The column name for the model's primary key in pivot tables.
+  
+  ```php
+  'model_morph_key' => 'model_id',
+  ```
+</ParamField>
+
+### Cache Configuration
+
+<ParamField path="cache.expiration_time" type="DateInterval" default="24 hours">
+  How long permissions are cached. Cache is automatically flushed when permissions or roles are updated.
+  
+  ```php
+  'expiration_time' => \DateInterval::createFromDateString('24 hours'),
+  ```
+</ParamField>
+
+<ParamField path="cache.key" type="string" default="spatie.permission.cache">
+  Cache key prefix for storing permissions.
+  
+  ```php
+  'key' => 'spatie.permission.cache',
+  ```
+</ParamField>
+
+<ParamField path="cache.store" type="string" default="default">
+  Cache store to use for permission caching.
+  
+  ```php
+  'store' => 'default',
+  ```
+</ParamField>
+
+## Role Definitions
+
+### Admin Role
+
+Administrators have full access to all system features.
+
+**Capabilities:**
+- Manage staff (create, edit, delete doctors and receptionists)
+- View all patients and medical records
+- Manage appointments
+- Access financial reports
+- Configure system settings
+- View all consultations
+- Manage payments
+
+**Protected Routes:**
+```php
+Route::middleware(['role:admin'])->group(function () {
+    Route::get('reports', [ReportsController::class, 'index']);
+    Route::resource('staff', DoctorController::class);
+});
+```
+
+### Doctor Role
+
+Medical professionals with patient care responsibilities.
+
+**Capabilities:**
+- View and manage patients
+- Create and view medical consultations
+- Manage appointments
+- Create prescriptions
+- Manage their own schedule
+- Upload patient attachments
+
+**Protected Routes:**
+```php
+Route::middleware(['role:doctor'])->group(function () {
+    Route::get('my-schedule', [DoctorScheduleController::class, 'index']);
+    Route::post('my-schedule', [DoctorScheduleController::class, 'store']);
+});
+
+Route::middleware(['role:admin|doctor'])->group(function () {
+    Route::resource('consultations', ConsultationController::class);
+});
+```
+
+### Receptionist Role
+
+Front desk staff managing administrative tasks.
+
+**Capabilities:**
+- Manage patient records
+- Schedule and manage appointments
+- Process payments
+- Upload patient attachments
+- View basic patient information
+
+**Protected Routes:**
+```php
+Route::middleware(['role:admin|receptionist'])->group(function () {
+    Route::get('payments', [PaymentController::class, 'index']);
+    Route::post('payments', [PaymentController::class, 'store']);
+});
+```
+
+### Patient Role
+
+Patients with access to their own medical information.
+
+**Capabilities:**
+- View their own appointments
+- View their own prescriptions
+- Book new appointments
+- View available appointment slots
+- Download their own prescriptions
+
+**Protected Routes:**
+```php
+Route::middleware(['role:patient'])->group(function () {
+    Route::get('my-appointments', [PatientPortalController::class, 'appointments']);
+    Route::get('my-prescriptions', [PatientPortalController::class, 'prescriptions']);
+    Route::get('book-appointment', [PatientPortalController::class, 'createAppointment']);
+    Route::post('book-appointment', [PatientPortalController::class, 'storeAppointment']);
+});
+```
+
+## Permission Structure
+
+Based on the route definitions in `routes/web.php`, here are the main permissions:
+
+### Patient Management
+- `view-patients` - View patient list (Admin, Doctor, Receptionist)
+- `create-patients` - Create new patients (Admin, Doctor, Receptionist)
+- `edit-patients` - Edit patient information (Admin, Doctor, Receptionist)
+- `delete-patients` - Delete patients (Admin)
+
+### Appointment Management
+- `view-appointments` - View appointments (Admin, Doctor, Receptionist)
+- `create-appointments` - Create appointments (Admin, Doctor, Receptionist)
+- `edit-appointments` - Edit appointments (Admin, Doctor, Receptionist)
+- `delete-appointments` - Delete appointments (Admin)
+
+### Consultation Management
+- `view-consultations` - View consultations (Admin, Doctor)
+- `create-consultations` - Create consultations (Admin, Doctor)
+- `edit-consultations` - Edit consultations (Admin, Doctor)
+- `delete-consultations` - Delete consultations (Admin)
+
+### Payment Management
+- `view-payments` - View payments (Admin, Receptionist)
+- `create-payments` - Process payments (Admin, Receptionist)
+
+### Staff Management
+- `view-staff` - View staff list (Admin)
+- `create-staff` - Create staff members (Admin)
+- `edit-staff` - Edit staff information (Admin)
+- `delete-staff` - Delete staff (Admin)
+
+### Reports
+- `view-reports` - Access system reports (Admin)
+
+### Schedule Management
+- `manage-own-schedule` - Manage doctor's own schedule (Doctor)
+
+## Middleware
+
+Nguhöe EHR uses role-based middleware to protect routes. Middleware aliases are configured in `bootstrap/app.php`:
+
+```php
+$middleware->alias([
+    'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+    'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+    'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+]);
+```
+
+### Role Middleware
+
+Restrict access to users with specific roles:
+
+```php
+// Single role
+Route::middleware(['role:admin'])->group(function () {
+    // Admin-only routes
+});
+
+// Multiple roles (OR logic)
+Route::middleware(['role:admin|doctor|receptionist'])->group(function () {
+    // Accessible by admin, doctor, or receptionist
+});
+```
+
+### Permission Middleware
+
+Restrict access to users with specific permissions:
+
+```php
+// Single permission
+Route::middleware(['permission:create-patients'])->group(function () {
+    // Routes for users with create-patients permission
+});
+
+// Multiple permissions (OR logic)
+Route::middleware(['permission:edit-patients|view-patients'])->group(function () {
+    // Accessible with either permission
+});
+```
+
+### Role or Permission Middleware
+
+Restrict access to users with either a specific role or permission:
+
+```php
+Route::middleware(['role_or_permission:admin|view-reports'])->group(function () {
+    // Accessible to admins or users with view-reports permission
+});
+```
+
+## User Model Setup
+
+The User model must use the `HasRoles` trait:
+
+```php
+use Spatie\Permission\Traits\HasRoles;
+
+class User extends Authenticatable
+{
+    use HasRoles;
+    
+    // ...
+}
+```
+
+## Role Assignment
+
+### Assigning Roles to Users
+
+```php
+use App\Models\User;
+
+// Assign a single role
+$user = User::find(1);
+$user->assignRole('doctor');
+
+// Assign multiple roles
+$user->assignRole(['doctor', 'admin']);
+
+// Sync roles (removes all existing roles and assigns new ones)
+$user->syncRoles(['doctor']);
+```
+
+### Removing Roles
+
+```php
+// Remove a specific role
+$user->removeRole('doctor');
+
+// Remove all roles
+$user->roles()->detach();
+```
+
+### Checking Roles
+
+```php
+// Check if user has a role
+if ($user->hasRole('admin')) {
+    // User is an admin
+}
+
+// Check if user has any of the given roles
+if ($user->hasAnyRole(['admin', 'doctor'])) {
+    // User is either admin or doctor
+}
+
+// Check if user has all of the given roles
+if ($user->hasAllRoles(['admin', 'doctor'])) {
+    // User is both admin and doctor
+}
+```
+
+## Permission Assignment
+
+### Assigning Permissions to Roles
+
+```php
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+// Create permissions
+Permission::create(['name' => 'view-patients']);
+Permission::create(['name' => 'create-patients']);
+Permission::create(['name' => 'edit-patients']);
+Permission::create(['name' => 'delete-patients']);
+
+// Assign permissions to role
+$role = Role::findByName('doctor');
+$role->givePermissionTo(['view-patients', 'create-patients', 'edit-patients']);
+```
+
+### Assigning Permissions Directly to Users
+
+```php
+// Give permission to user
+$user->givePermissionTo('view-reports');
+
+// Revoke permission
+$user->revokePermissionTo('view-reports');
+
+// Sync permissions
+$user->syncPermissions(['view-patients', 'create-patients']);
+```
+
+### Checking Permissions
+
+```php
+// Check if user has a permission
+if ($user->can('create-patients')) {
+    // User can create patients
+}
+
+// Check in Blade templates
+@can('create-patients')
+    <a href="/patients/create">Create Patient</a>
+@endcan
+
+// Check multiple permissions
+if ($user->hasAnyPermission(['create-patients', 'edit-patients'])) {
+    // User has at least one of the permissions
+}
+```
+
+## Guards
+
+Nguhöe EHR uses the `web` guard for authentication, configured in `config/auth.php`:
+
+```php
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
+    ],
+],
+```
+
+All roles and permissions use the `web` guard by default.
+
+## Database Seeding
+
+Create roles and permissions in your database seeder:
+
+```php
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+class RolePermissionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // Reset cached roles and permissions
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        // Create permissions
+        $permissions = [
+            'view-patients',
+            'create-patients',
+            'edit-patients',
+            'delete-patients',
+            'view-appointments',
+            'create-appointments',
+            'edit-appointments',
+            'delete-appointments',
+            'view-consultations',
+            'create-consultations',
+            'edit-consultations',
+            'delete-consultations',
+            'view-payments',
+            'create-payments',
+            'view-staff',
+            'create-staff',
+            'edit-staff',
+            'delete-staff',
+            'view-reports',
+            'manage-own-schedule',
+        ];
+
+        foreach ($permissions as $permission) {
+            Permission::create(['name' => $permission]);
+        }
+
+        // Create roles and assign permissions
+        $admin = Role::create(['name' => 'admin']);
+        $admin->givePermissionTo(Permission::all());
+
+        $doctor = Role::create(['name' => 'doctor']);
+        $doctor->givePermissionTo([
+            'view-patients',
+            'create-patients',
+            'edit-patients',
+            'view-appointments',
+            'create-appointments',
+            'edit-appointments',
+            'view-consultations',
+            'create-consultations',
+            'edit-consultations',
+            'manage-own-schedule',
+        ]);
+
+        $receptionist = Role::create(['name' => 'receptionist']);
+        $receptionist->givePermissionTo([
+            'view-patients',
+            'create-patients',
+            'edit-patients',
+            'view-appointments',
+            'create-appointments',
+            'edit-appointments',
+            'view-payments',
+            'create-payments',
+        ]);
+
+        $patient = Role::create(['name' => 'patient']);
+        // Patients don't need explicit permissions
+        // Access is controlled via role-based routes
+    }
+}
+```
+
+## Authorization in Controllers
+
+Authorize actions within controllers:
+
+```php
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
+class PatientController extends Controller
+{
+    use AuthorizesRequests;
+
+    public function index()
+    {
+        $this->authorize('view-patients');
+        
+        return Patient::all();
+    }
+
+    public function store(Request $request)
+    {
+        $this->authorize('create-patients');
+        
+        // Create patient logic
+    }
+}
+```
+
+## Route-Level Authorization
+
+Example from `routes/web.php` showing the multi-tier access structure:
+
+```php
+// All authenticated and verified users
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Admin + Doctor + Receptionist
+    Route::middleware(['role:admin|doctor|receptionist'])->group(function () {
+        Route::resource('patients', PatientController::class);
+        Route::resource('appointments', AppointmentController::class);
+        Route::post('patients/{patient}/attachments', [AttachmentController::class, 'storePatient']);
+    });
+
+    // Admin + Doctor only
+    Route::middleware(['role:admin|doctor'])->group(function () {
+        Route::resource('consultations', ConsultationController::class);
+    });
+
+    // Admin + Receptionist only
+    Route::middleware(['role:admin|receptionist'])->group(function () {
+        Route::get('payments', [PaymentController::class, 'index']);
+        Route::post('payments', [PaymentController::class, 'store']);
+    });
+
+    // Admin only
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('reports', [ReportsController::class, 'index']);
+        Route::resource('staff', DoctorController::class);
+    });
+
+    // Doctor only
+    Route::middleware(['role:doctor'])->group(function () {
+        Route::get('my-schedule', [DoctorScheduleController::class, 'index']);
+        Route::post('my-schedule', [DoctorScheduleController::class, 'store']);
+    });
+
+    // Patient only
+    Route::middleware(['role:patient'])->group(function () {
+        Route::get('my-appointments', [PatientPortalController::class, 'appointments']);
+        Route::get('my-prescriptions', [PatientPortalController::class, 'prescriptions']);
+        Route::get('book-appointment', [PatientPortalController::class, 'createAppointment']);
+        Route::post('book-appointment', [PatientPortalController::class, 'storeAppointment']);
+    });
+});
+```
+
+## Blade Directives
+
+Check roles and permissions in Blade templates:
+
+```blade
+@role('admin')
+    <a href="/admin/dashboard">Admin Dashboard</a>
+@endrole
+
+@hasrole('admin')
+    <a href="/reports">View Reports</a>
+@endhasrole
+
+@hasanyrole('admin|doctor')
+    <a href="/consultations">Consultations</a>
+@endhasanyrole
+
+@can('create-patients')
+    <a href="/patients/create">Add Patient</a>
+@endcan
+
+@canany(['edit-patients', 'delete-patients'])
+    <button>Manage Patient</button>
+@endcanany
+```
+
+## Security Best Practices
+
+1. **Principle of Least Privilege**: Assign users only the roles and permissions they need
+2. **Regular Audits**: Periodically review user roles and permissions
+3. **Role Separation**: Don't assign admin roles to regular staff unless necessary
+4. **Permission Caching**: Permissions are cached for 24 hours; clear cache after changes in production
+5. **Database Protection**: Ensure role and permission tables are not directly modifiable by users
+
+### Clearing Permission Cache
+
+```bash
+php artisan cache:forget spatie.permission.cache
+```
+
+Or programmatically:
+
+```php
+app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+```
+
+## Troubleshooting
+
+### "User does not have the right roles" Error
+
+Ensure the user has been assigned the required role:
+
+```php
+$user->assignRole('doctor');
+```
+
+### Permissions Not Working
+
+1. Clear permission cache: `php artisan cache:forget spatie.permission.cache`
+2. Verify User model uses `HasRoles` trait
+3. Check middleware is properly registered in `bootstrap/app.php`
+4. Ensure migrations have been run
+
+### Role Changes Not Reflecting
+
+Clear the permission cache:
+
+```bash
+php artisan cache:forget spatie.permission.cache
+```
+
+## Related Documentation
+
+- [Authentication Configuration](/configuration/authentication)
+- [Environment Configuration](/configuration/environment)
+- [Spatie Laravel Permission Documentation](https://spatie.be/docs/laravel-permission)
