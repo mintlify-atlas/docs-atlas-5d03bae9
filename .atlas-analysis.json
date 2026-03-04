@@ -1,0 +1,119 @@
+{
+  "projectType": "saas",
+  "projectName": "Nguhöe EHR",
+  "projectDescription": "Electronic Health Record system for small clinics and medical offices",
+  "theme": "almond",
+  "primaryColor": "#0891B2",
+  "lightColor": "#67E8F9",
+  "darkColor": "#164E63",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/patient-management",
+              "features/appointments",
+              "features/consultations",
+              "features/prescriptions",
+              "features/payments"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/admin-guide",
+              "guides/doctor-guide",
+              "guides/receptionist-guide",
+              "guides/patient-portal"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment",
+              "configuration/authentication",
+              "configuration/roles-permissions",
+              "configuration/backup"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Models",
+            "pages": [
+              "api/models/patient",
+              "api/models/appointment",
+              "api/models/consultation",
+              "api/models/prescription",
+              "api/models/payment"
+            ]
+          },
+          {
+            "group": "Controllers",
+            "pages": [
+              "api/controllers/patient-controller",
+              "api/controllers/appointment-controller",
+              "api/controllers/consultation-controller",
+              "api/controllers/prescription-controller"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/requirements",
+              "deployment/production",
+              "deployment/security",
+              "deployment/maintenance"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Patient Management with Medical History",
+    "Appointment Scheduling System",
+    "Clinical Consultations with Vital Signs",
+    "Prescription Generation and PDF Export",
+    "Payment Tracking and Billing",
+    "Role-Based Access Control (Admin, Doctor, Receptionist, Patient)",
+    "Patient Self-Service Portal",
+    "Reporting and Analytics",
+    "Staff Management",
+    "Medical Record Attachments"
+  ],
+  "publicApiSurface": [
+    "Patient Model - full_name, document_id, birth_date, medical_antecedents, allergies",
+    "Appointment Model - patient_id, doctor_id, appointment_date, status",
+    "Consultation Model - patient_id, doctor_id, vital signs (weight, height, BP, etc.)",
+    "Prescription Model - consultation_id, medications, dosage",
+    "Payment Model - patient_id, consultation_id, amount, status",
+    "PatientController - index, store, show, update, destroy",
+    "AppointmentController - index, store, show, update, destroy",
+    "ConsultationController - index, store, show, update, destroy",
+    "PrescriptionController - download, preview",
+    "DoctorScheduleController - index, store",
+    "PatientPortalController - appointments, prescriptions, createAppointment",
+    "ReportsController - index",
+    "DoctorController (Staff) - index, create, store, edit, update, destroy"
+  ]
+}
