@@ -1,0 +1,236 @@
+---
+title: User Model
+description: User authentication and authorization model with role management
+---
+
+## Overview
+
+The `User` model represents authenticated users in the system, including doctors, receptionists, admin staff, and patients. It extends Laravel's Authenticatable class and integrates with Fortify for authentication and Spatie Permission for role-based access control.
+
+**Model Location:** `app/Models/User.php`  
+**Database Table:** `users`
+
+## Database Schema
+
+<ParamField path="id" type="integer" required>
+  Primary key, auto-incrementing
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  User's full name (max 255 characters)
+</ParamField>
+
+<ParamField path="email" type="string" required>
+  User's email address (unique, used for login)
+</ParamField>
+
+<ParamField path="email_verified_at" type="timestamp">
+  Timestamp when email was verified (nullable)
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  Hashed password (automatically hashed by Laravel)
+</ParamField>
+
+<ParamField path="two_factor_secret" type="text">
+  Encrypted two-factor authentication secret
+</ParamField>
+
+<ParamField path="two_factor_recovery_codes" type="text">
+  Encrypted two-factor recovery codes
+</ParamField>
+
+<ParamField path="two_factor_confirmed_at" type="timestamp">
+  Timestamp when two-factor authentication was confirmed
+</ParamField>
+
+<ParamField path="remember_token" type="string">
+  Token for "remember me" functionality
+</ParamField>
+
+<ParamField path="created_at" type="timestamp">
+  Record creation timestamp
+</ParamField>
+
+<ParamField path="updated_at" type="timestamp">
+  Record last update timestamp
+</ParamField>
+
+## Fillable Attributes
+
+Only these attributes can be mass-assigned:
+
+```php
+protected $fillable = [
+    'name',
+    'email',
+    'password',
+];
+```
+
+## Hidden Attributes
+
+These attributes are hidden from JSON serialization for security:
+
+```php
+protected $hidden = [
+    'password',
+    'two_factor_secret',
+    'two_factor_recovery_codes',
+    'remember_token',
+];
+```
+
+## Type Casting
+
+```php
+protected function casts(): array
+{
+    return [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'two_factor_confirmed_at' => 'datetime',
+    ];
+}
+```
+
+## Traits
+
+The User model uses the following traits:
+
+- **HasFactory**: Enables model factories for testing
+- **Notifiable**: Adds notification sending capabilities
+- **TwoFactorAuthenticatable**: Adds two-factor authentication via Laravel Fortify
+- **HasRoles**: Adds role and permission management via Spatie Permission
+
+## Roles
+
+Users can have one of four roles:
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="user-shield">
+    Full system access including staff management and reports
+  </Card>
+  <Card title="Doctor" icon="user-doctor">
+    Manage appointments, consultations, prescriptions, and schedules
+  </Card>
+  <Card title="Receptionist" icon="user-tie">
+    Manage patients, appointments, and payments
+  </Card>
+  <Card title="Patient" icon="user">
+    Self-service portal for appointments and medical records
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Creating a User
+
+```php
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+$user = User::create([
+    'name' => 'Dr. John Smith',
+    'email' => 'john.smith@example.com',
+    'password' => Hash::make('secure-password'),
+]);
+
+// Assign role
+$user->assignRole('doctor');
+```
+
+### Checking User Role
+
+```php
+// Check if user has a specific role
+if ($user->hasRole('admin')) {
+    // User is an admin
+}
+
+// Check if user has any of the roles
+if ($user->hasAnyRole(['admin', 'doctor'])) {
+    // User is admin or doctor
+}
+
+// Check if user has a permission
+if ($user->can('create-patients')) {
+    // User can create patients
+}
+```
+
+### Querying by Role
+
+```php
+// Get all doctors
+$doctors = User::role('doctor')->get();
+
+// Get all staff (non-patients)
+$staff = User::role(['admin', 'doctor', 'receptionist'])->get();
+
+// Get users with specific permission
+$usersWithPermission = User::permission('view-reports')->get();
+```
+
+### Two-Factor Authentication
+
+```php
+// Check if user has 2FA enabled
+if ($user->two_factor_secret) {
+    // 2FA is enabled
+}
+
+// Check if 2FA is confirmed
+if ($user->hasEnabledTwoFactorAuthentication()) {
+    // 2FA is fully configured
+}
+```
+
+### Sending Notifications
+
+```php
+use App\Notifications\AppointmentReminder;
+
+$user->notify(new AppointmentReminder($appointment));
+```
+
+## Relationships
+
+While not explicitly defined in the User model, the following relationships exist:
+
+### Doctor Schedules
+
+```php
+// Accessed via DoctorSchedule model
+$schedules = DoctorSchedule::where('user_id', $user->id)->get();
+```
+
+### Consultations (as Doctor)
+
+```php
+// Accessed via Consultation model
+$consultations = Consultation::where('doctor_id', $user->id)->get();
+```
+
+### Appointments (as Doctor)
+
+```php
+// Accessed via Appointment model
+$appointments = Appointment::where('doctor_id', $user->id)->get();
+```
+
+## Security Considerations
+
+<Warning>
+  Never expose user passwords, two-factor secrets, or recovery codes in API responses. The model's `$hidden` array prevents this by default.
+</Warning>
+
+<Note>
+  Email verification is available through Laravel Fortify. Enable it in `config/fortify.php` to require users to verify their email before accessing the system.
+</Note>
+
+## Related Documentation
+
+- [Authentication Configuration](/configuration/authentication)
+- [Roles & Permissions](/configuration/roles-permissions)
+- [Admin Guide](/guides/admin-guide)

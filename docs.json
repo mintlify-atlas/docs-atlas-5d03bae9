@@ -72,11 +72,14 @@
           {
             "group": "Models",
             "pages": [
+              "api/models/user",
               "api/models/patient",
               "api/models/appointment",
               "api/models/consultation",
               "api/models/prescription",
-              "api/models/payment"
+              "api/models/payment",
+              "api/models/attachment",
+              "api/models/doctor-schedule"
             ]
           },
           {
@@ -85,7 +88,9 @@
               "api/controllers/patient-controller",
               "api/controllers/appointment-controller",
               "api/controllers/consultation-controller",
-              "api/controllers/prescription-controller"
+              "api/controllers/prescription-controller",
+              "api/controllers/payment-controller",
+              "api/controllers/attachment-controller"
             ]
           }
         ]

@@ -1,0 +1,238 @@
+---
+title: Attachment Model
+description: File attachment system with polymorphic relationships
+---
+
+## Overview
+
+The `Attachment` model handles file uploads and storage for various entities in the system using Laravel's polymorphic relationships. Currently used for patient medical records, lab results, and documentation.
+
+**Model Location:** `app/Models/Attachment.php`  
+**Database Table:** `attachments`
+
+## Database Schema
+
+<ParamField path="id" type="integer" required>
+  Primary key, auto-incrementing
+</ParamField>
+
+<ParamField path="attachable_id" type="integer" required>
+  ID of the parent model (e.g., patient ID)
+</ParamField>
+
+<ParamField path="attachable_type" type="string" required>
+  Class name of the parent model (e.g., 'App\\Models\\Patient')
+</ParamField>
+
+<ParamField path="file_path" type="string" required>
+  Storage path to the uploaded file
+</ParamField>
+
+<ParamField path="file_name" type="string" required>
+  Original filename of the uploaded file
+</ParamField>
+
+<ParamField path="mime_type" type="string" required>
+  MIME type of the file (e.g., 'application/pdf', 'image/jpeg')
+</ParamField>
+
+<ParamField path="file_size" type="integer" required>
+  File size in bytes
+</ParamField>
+
+<ParamField path="label" type="string">
+  Optional descriptive label for the attachment
+</ParamField>
+
+<ParamField path="created_at" type="timestamp">
+  Record creation timestamp
+</ParamField>
+
+<ParamField path="updated_at" type="timestamp">
+  Record last update timestamp
+</ParamField>
+
+## Fillable Attributes
+
+```php
+protected $fillable = [
+    'attachable_id',
+    'attachable_type',
+    'file_path',
+    'file_name',
+    'mime_type',
+    'file_size',
+    'label',
+];
+```
+
+## Accessors
+
+### URL Accessor
+
+The model automatically appends a `url` attribute that provides the public URL to access the file:
+
+```php
+protected $appends = ['url'];
+
+public function getUrlAttribute(): string
+{
+    return \Illuminate\Support\Facades\Storage::url($this->file_path);
+}
+```
+
+## Relationships
+
+### Polymorphic Relationship
+
+```php
+public function attachable(): MorphTo
+{
+    return $this->morphTo();
+}
+```
+
+This allows attachments to belong to any model. Currently supported:
+
+- **Patient**: Medical records, lab results, imaging
+
+## Usage Examples
+
+### Uploading an Attachment
+
+```php
+use App\Models\Patient;
+use Illuminate\Http\UploadedFile;
+
+$patient = Patient::find(1);
+$file = $request->file('document');
+
+// Store file
+$path = $file->store('attachments/patients', 'public');
+
+// Create attachment record
+$attachment = $patient->attachments()->create([
+    'file_path' => $path,
+    'file_name' => $file->getClientOriginalName(),
+    'mime_type' => $file->getMimeType(),
+    'file_size' => $file->getSize(),
+    'label' => 'Lab Results - January 2026',
+]);
+```
+
+### Retrieving Attachments
+
+```php
+// Get all attachments for a patient
+$patient = Patient::with('attachments')->find(1);
+
+foreach ($patient->attachments as $attachment) {
+    echo "File: {$attachment->file_name}\n";
+    echo "URL: {$attachment->url}\n";
+    echo "Size: " . number_format($attachment->file_size / 1024, 2) . " KB\n";
+}
+```
+
+### Filtering by File Type
+
+```php
+// Get only PDF attachments
+$pdfAttachments = $patient->attachments()
+    ->where('mime_type', 'application/pdf')
+    ->get();
+
+// Get only images
+$images = $patient->attachments()
+    ->where('mime_type', 'like', 'image/%')
+    ->get();
+```
+
+### Deleting an Attachment
+
+```php
+use Illuminate\Support\Facades\Storage;
+
+$attachment = Attachment::find(1);
+
+// Delete file from storage
+Storage::disk('public')->delete($attachment->file_path);
+
+// Delete database record
+$attachment->delete();
+```
+
+### Getting Attachment Size (Human Readable)
+
+```php
+$attachment = Attachment::find(1);
+
+function formatBytes($bytes) {
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    return round($bytes / (1024 ** $pow), 2) . ' ' . $units[$pow];
+}
+
+echo formatBytes($attachment->file_size); // "2.5 MB"
+```
+
+## File Type Restrictions
+
+The system enforces the following file upload restrictions:
+
+<Note>
+  **Maximum File Size**: 10 MB (10240 KB)
+  
+  This limit is enforced at the controller validation level.
+</Note>
+
+### Recommended File Types
+
+<CardGroup cols={2}>
+  <Card title="Documents" icon="file-pdf">
+    PDF, DOC, DOCX - Medical records, reports
+  </Card>
+  <Card title="Images" icon="image">
+    JPG, PNG, JPEG - X-rays, scans, photos
+  </Card>
+  <Card title="Spreadsheets" icon="file-excel">
+    XLS, XLSX - Lab results, data tables
+  </Card>
+  <Card title="Text Files" icon="file-lines">
+    TXT, RTF - Notes, transcriptions
+  </Card>
+</CardGroup>
+
+## Storage Configuration
+
+Attachments are stored using Laravel's public disk:
+
+```php
+// config/filesystems.php
+'public' => [
+    'driver' => 'local',
+    'root' => storage_path('app/public'),
+    'url' => env('APP_URL').'/storage',
+    'visibility' => 'public',
+],
+```
+
+<Warning>
+  Ensure you run `php artisan storage:link` to create the symbolic link from `public/storage` to `storage/app/public`.
+</Warning>
+
+## Security Considerations
+
+<Info>
+  **Access Control**: File access should be controlled through authentication middleware. Only authorized users (doctors, receptionists, admins) and the patient themselves should access patient attachments.
+</Info>
+
+<Warning>
+  **File Validation**: Always validate file types and sizes on upload to prevent malicious file uploads. The AttachmentController implements this validation.
+</Warning>
+
+## Related Documentation
+
+- [Patient Management](/features/patient-management#attachments-system)
+- [Attachment Controller](/api/controllers/attachment-controller)

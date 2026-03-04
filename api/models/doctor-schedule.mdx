@@ -1,0 +1,293 @@
+---
+title: DoctorSchedule Model
+description: Weekly availability schedule management for doctors
+---
+
+## Overview
+
+The `DoctorSchedule` model manages doctor availability by defining working hours for each day of the week. This enables the appointment scheduling system to check doctor availability and prevent booking conflicts.
+
+**Model Location:** `app/Models/DoctorSchedule.php`  
+**Database Table:** `doctor_schedules`
+
+## Database Schema
+
+<ParamField path="id" type="integer" required>
+  Primary key, auto-incrementing
+</ParamField>
+
+<ParamField path="user_id" type="integer" required>
+  Foreign key to the users table (doctor)
+</ParamField>
+
+<ParamField path="day_of_week" type="integer" required>
+  Day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+</ParamField>
+
+<ParamField path="start_time" type="time" required>
+  Start time for availability (e.g., '09:00:00')
+</ParamField>
+
+<ParamField path="end_time" type="time" required>
+  End time for availability (e.g., '17:00:00')
+</ParamField>
+
+<ParamField path="is_working" type="boolean" required>
+  Whether the doctor is working on this day/time (default: true)
+</ParamField>
+
+<ParamField path="created_at" type="timestamp">
+  Record creation timestamp
+</ParamField>
+
+<ParamField path="updated_at" type="timestamp">
+  Record last update timestamp
+</ParamField>
+
+## Fillable Attributes
+
+```php
+protected $fillable = [
+    'user_id',
+    'day_of_week',
+    'start_time',
+    'end_time',
+    'is_working'
+];
+```
+
+## Type Casting
+
+```php
+protected $casts = [
+    'is_working' => 'boolean',
+];
+```
+
+## Relationships
+
+### User (Doctor)
+
+```php
+public function user()
+{
+    return $this->belongsTo(User::class);
+}
+```
+
+Each schedule entry belongs to a user (doctor).
+
+## Day of Week Values
+
+The `day_of_week` field uses numeric values:
+
+| Value | Day |
+|-------|-----|
+| 0 | Sunday |
+| 1 | Monday |
+| 2 | Tuesday |
+| 3 | Wednesday |
+| 4 | Thursday |
+| 5 | Friday |
+| 6 | Saturday |
+
+## Usage Examples
+
+### Creating a Weekly Schedule
+
+```php
+use App\Models\DoctorSchedule;
+use App\Models\User;
+
+$doctor = User::role('doctor')->first();
+
+// Monday through Friday: 9 AM to 5 PM
+for ($day = 1; $day <= 5; $day++) {
+    DoctorSchedule::create([
+        'user_id' => $doctor->id,
+        'day_of_week' => $day,
+        'start_time' => '09:00:00',
+        'end_time' => '17:00:00',
+        'is_working' => true,
+    ]);
+}
+
+// Saturday: 9 AM to 1 PM
+DoctorSchedule::create([
+    'user_id' => $doctor->id,
+    'day_of_week' => 6,
+    'start_time' => '09:00:00',
+    'end_time' => '13:00:00',
+    'is_working' => true,
+]);
+```
+
+### Checking Doctor Availability
+
+```php
+use Carbon\Carbon;
+
+$doctor = User::find(1);
+$date = Carbon::parse('2026-03-15'); // A specific date
+$dayOfWeek = $date->dayOfWeek; // 0-6
+
+// Get schedule for this day
+$schedule = DoctorSchedule::where('user_id', $doctor->id)
+    ->where('day_of_week', $dayOfWeek)
+    ->where('is_working', true)
+    ->first();
+
+if ($schedule) {
+    echo "Available from {$schedule->start_time} to {$schedule->end_time}";
+} else {
+    echo "Doctor not available on this day";
+}
+```
+
+### Getting All Working Days for a Doctor
+
+```php
+$doctor = User::find(1);
+
+$workingDays = DoctorSchedule::where('user_id', $doctor->id)
+    ->where('is_working', true)
+    ->orderBy('day_of_week')
+    ->get();
+
+foreach ($workingDays as $schedule) {
+    $dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][$schedule->day_of_week];
+    echo "{$dayName}: {$schedule->start_time} - {$schedule->end_time}\n";
+}
+```
+
+### Updating Schedule
+
+```php
+// Change Monday schedule
+$schedule = DoctorSchedule::where('user_id', $doctor->id)
+    ->where('day_of_week', 1)
+    ->first();
+
+$schedule->update([
+    'start_time' => '08:00:00',
+    'end_time' => '16:00:00',
+]);
+```
+
+### Marking a Day as Non-Working
+
+```php
+// Doctor not working on Fridays
+$schedule = DoctorSchedule::where('user_id', $doctor->id)
+    ->where('day_of_week', 5)
+    ->first();
+
+if ($schedule) {
+    $schedule->update(['is_working' => false]);
+}
+```
+
+### Finding Available Time Slots
+
+```php
+use Carbon\Carbon;
+
+$doctor = User::find(1);
+$date = Carbon::parse('2026-03-17'); // Monday
+$dayOfWeek = $date->dayOfWeek;
+
+// Get schedule
+$schedule = DoctorSchedule::where('user_id', $doctor->id)
+    ->where('day_of_week', $dayOfWeek)
+    ->where('is_working', true)
+    ->first();
+
+if (!$schedule) {
+    return [];
+}
+
+// Generate 30-minute slots
+$slots = [];
+$start = Carbon::parse($schedule->start_time);
+$end = Carbon::parse($schedule->end_time);
+
+while ($start < $end) {
+    $slotEnd = $start->copy()->addMinutes(30);
+    
+    // Check if slot is already booked
+    $isBooked = Appointment::where('doctor_id', $doctor->id)
+        ->whereDate('start_time', $date)
+        ->where('start_time', $start->format('H:i:s'))
+        ->exists();
+    
+    if (!$isBooked) {
+        $slots[] = [
+            'time' => $start->format('H:i'),
+            'available' => true,
+        ];
+    }
+    
+    $start->addMinutes(30);
+}
+
+return $slots;
+```
+
+## Validation Rules
+
+When creating or updating schedules, validate:
+
+```php
+$request->validate([
+    'user_id' => 'required|exists:users,id',
+    'day_of_week' => 'required|integer|between:0,6',
+    'start_time' => 'required|date_format:H:i:s',
+    'end_time' => 'required|date_format:H:i:s|after:start_time',
+    'is_working' => 'boolean',
+]);
+```
+
+<Warning>
+  Ensure `end_time` is always after `start_time` to prevent invalid schedules.
+</Warning>
+
+## Common Queries
+
+### Get All Doctors with Their Schedules
+
+```php
+$doctors = User::role('doctor')
+    ->with(['schedules' => function ($query) {
+        $query->where('is_working', true)
+              ->orderBy('day_of_week');
+    }])
+    ->get();
+```
+
+<Note>
+  This requires adding a `schedules()` relationship method to the User model:
+  
+  ```php
+  public function schedules()
+  {
+      return $this->hasMany(DoctorSchedule::class);
+  }
+  ```
+</Note>
+
+### Check if Doctor Works on Specific Day
+
+```php
+function isDoctorAvailable($doctorId, $dayOfWeek) {
+    return DoctorSchedule::where('user_id', $doctorId)
+        ->where('day_of_week', $dayOfWeek)
+        ->where('is_working', true)
+        ->exists();
+}
+```
+
+## Related Documentation
+
+- [Appointment Scheduling](/features/appointments)
+- [Doctor Guide](/guides/doctor-guide)
+- [Patient Portal](/guides/patient-portal)

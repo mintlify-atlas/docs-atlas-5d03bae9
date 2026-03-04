@@ -1,0 +1,313 @@
+---
+title: PaymentController
+description: Payment tracking and billing management
+---
+
+## Overview
+
+The `PaymentController` handles payment recording and tracking for medical services. It supports multiple payment methods and can link payments to specific consultations.
+
+**Controller Location:** `app/Http/Controllers/PaymentController.php`  
+**Base Route:** `/payments`  
+**Middleware:** `auth`, `verified`, `role:admin|receptionist`
+
+## Endpoints
+
+### List Payments
+
+<ParamField query="method" type="string">
+  HTTP Method: **GET**
+</ParamField>
+
+<ParamField query="route" type="string">
+  Route: `/payments`
+</ParamField>
+
+<ParamField query="name" type="string">
+  Route Name: `payments.index`
+</ParamField>
+
+Retrieve a paginated list of all payments with patient and consultation information.
+
+#### Query Parameters
+
+<ParamField query="search" type="string">
+  Search by patient full name (partial match)
+</ParamField>
+
+#### Response
+
+Returns an Inertia response rendering `payments/index` with:
+
+<ResponseField name="payments" type="object">
+  Paginated payment collection (10 per page)
+  
+  <Expandable title="Payment object structure">
+    <ResponseField name="id" type="integer">
+      Payment ID
+    </ResponseField>
+    
+    <ResponseField name="patient_id" type="integer">
+      Associated patient ID
+    </ResponseField>
+    
+    <ResponseField name="consultation_id" type="integer">
+      Associated consultation ID (nullable)
+    </ResponseField>
+    
+    <ResponseField name="amount" type="decimal">
+      Payment amount
+    </ResponseField>
+    
+    <ResponseField name="payment_method" type="string">
+      Payment method: cash, card, or transfer
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Payment status: paid, pending, or cancelled
+    </ResponseField>
+    
+    <ResponseField name="notes" type="string">
+      Optional payment notes
+    </ResponseField>
+    
+    <ResponseField name="patient" type="object">
+      Related patient information
+    </ResponseField>
+    
+    <ResponseField name="consultation" type="object">
+      Related consultation information (if linked)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="filters" type="object">
+  Applied search filters
+</ResponseField>
+
+#### Example Request
+
+```bash
+GET /payments?search=John
+```
+
+#### Implementation
+
+```php
+public function index(Request $request)
+{
+    $query = Payment::with(['patient', 'consultation'])->latest();
+
+    if ($request->has('search')) {
+        $search = $request->get('search');
+        $query->whereHas('patient', function ($q) use ($search) {
+            $q->where('full_name', 'like', "%{$search}%");
+        });
+    }
+
+    return Inertia::render('payments/index', [
+        'payments' => $query->paginate(10)->withQueryString(),
+        'filters' => $request->only(['search']),
+    ]);
+}
+```
+
+---
+
+### Create Payment
+
+<ParamField query="method" type="string">
+  HTTP Method: **POST**
+</ParamField>
+
+<ParamField query="route" type="string">
+  Route: `/payments`
+</ParamField>
+
+<ParamField query="name" type="string">
+  Route Name: `payments.store`
+</ParamField>
+
+Record a new payment transaction.
+
+#### Request Body
+
+<ParamField body="patient_id" type="integer" required>
+  ID of the patient making the payment
+</ParamField>
+
+<ParamField body="consultation_id" type="integer">
+  ID of the associated consultation (optional)
+</ParamField>
+
+<ParamField body="amount" type="decimal" required>
+  Payment amount (minimum: 0)
+</ParamField>
+
+<ParamField body="payment_method" type="string" required>
+  Payment method: `cash`, `card`, or `transfer`
+</ParamField>
+
+<ParamField body="status" type="string" required>
+  Payment status: `paid`, `pending`, or `cancelled`
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Optional payment notes or description
+</ParamField>
+
+#### Response
+
+Redirects back with success message: "Pago registrado correctamente."
+
+#### Example Request
+
+```bash
+POST /payments
+Content-Type: application/json
+
+{
+  "patient_id": 15,
+  "consultation_id": 42,
+  "amount": 150.00,
+  "payment_method": "card",
+  "status": "paid",
+  "notes": "Payment for consultation - March 2026"
+}
+```
+
+#### Validation Rules
+
+```php
+[
+    'patient_id' => 'required|exists:patients,id',
+    'consultation_id' => 'nullable|exists:consultations,id',
+    'amount' => 'required|numeric|min:0',
+    'payment_method' => 'required|string|in:cash,card,transfer',
+    'status' => 'required|string|in:paid,pending,cancelled',
+    'notes' => 'nullable|string',
+]
+```
+
+#### Implementation
+
+```php
+public function store(Request $request, CreatePaymentAction $action)
+{
+    $validated = $request->validate([
+        'patient_id' => 'required|exists:patients,id',
+        'consultation_id' => 'nullable|exists:consultations,id',
+        'amount' => 'required|numeric|min:0',
+        'payment_method' => 'required|string|in:cash,card,transfer',
+        'status' => 'required|string|in:paid,pending,cancelled',
+        'notes' => 'nullable|string',
+    ]);
+
+    $action->execute($validated);
+
+    return redirect()->back()->with('success', 'Pago registrado correctamente.');
+}
+```
+
+## Authorization
+
+Only users with `admin` or `receptionist` roles can access payment endpoints.
+
+```php
+Route::middleware(['role:admin|receptionist'])->group(function () {
+    Route::get('payments', [PaymentController::class, 'index']);
+    Route::post('payments', [PaymentController::class, 'store']);
+});
+```
+
+## Payment Methods
+
+The system supports three payment methods:
+
+<CardGroup cols={3}>
+  <Card title="Cash" icon="money-bill">
+    Cash payment at the clinic
+  </Card>
+  <Card title="Card" icon="credit-card">
+    Credit or debit card payment
+  </Card>
+  <Card title="Transfer" icon="money-bill-transfer">
+    Bank transfer or wire payment
+  </Card>
+</CardGroup>
+
+## Payment Statuses
+
+<Tabs>
+  <Tab title="Paid">
+    Payment has been completed and verified.
+  </Tab>
+  <Tab title="Pending">
+    Payment is expected but not yet received (e.g., pending bank transfer).
+  </Tab>
+  <Tab title="Cancelled">
+    Payment was cancelled or refunded.
+  </Tab>
+</Tabs>
+
+## Action Classes
+
+The controller uses an action class for payment creation:
+
+**CreatePaymentAction** (`app/Actions/Payments/CreatePaymentAction.php`)
+
+This separates business logic from the controller for better testability and reusability.
+
+## Use Cases
+
+### Recording a Consultation Payment
+
+```javascript
+// Frontend: After consultation is complete
+const paymentData = {
+  patient_id: consultation.patient_id,
+  consultation_id: consultation.id,
+  amount: 150.00,
+  payment_method: 'card',
+  status: 'paid',
+  notes: `Payment for consultation ${consultation.id}`
+};
+
+await axios.post('/payments', paymentData);
+```
+
+### Recording a General Payment
+
+```javascript
+// Payment not linked to consultation (e.g., registration fee)
+const paymentData = {
+  patient_id: patient.id,
+  consultation_id: null,
+  amount: 50.00,
+  payment_method: 'cash',
+  status: 'paid',
+  notes: 'Patient registration fee'
+};
+
+await axios.post('/payments', paymentData);
+```
+
+### Searching Payments
+
+```javascript
+// Search by patient name
+const searchQuery = 'Maria';
+const response = await axios.get(`/payments?search=${searchQuery}`);
+```
+
+## Related Models
+
+- [Payment Model](/api/models/payment)
+- [Patient Model](/api/models/patient)
+- [Consultation Model](/api/models/consultation)
+
+## Related Documentation
+
+- [Payment Feature Guide](/features/payments)
+- [Receptionist Guide](/guides/receptionist-guide)
+- [Admin Guide](/guides/admin-guide)
